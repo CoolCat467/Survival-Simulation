@@ -27,6 +27,7 @@ __license__ = "GNU General Public License Version 3"
 
 
 from survival_sim.survivor import Survivor
+from survival_sim.genetic import test as genetic_test
 
 
 def run() -> None:
@@ -41,6 +42,8 @@ def run() -> None:
             if person.alive:
                 person.advanceTime()
                 person.printToConsole()
+
+    genetic_test()
 
 
 def cli_run() -> None:

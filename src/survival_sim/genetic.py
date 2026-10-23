@@ -1,5 +1,34 @@
-from survivor import Survivor
+"""Genetic."""
+
+# Programmed by CoolCat467
+
+from __future__ import annotations
+
+# Genetic
+# Copyright (C) 2025  Nathan Roth
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+__title__ = "Genetic"
+__author__ = "Nathan Roth & CoolCat467"
+__license__ = "GNU General Public License Version 3"
+
+
 import random
+
+from survival_sim.survivor import Survivor
+
 def pickBest(people: list, fraction):
     sortedList = sorted(people, key=lambda person: person.calculateFitness(),reverse=True)
     returnList = []
@@ -93,14 +122,21 @@ def geneticAlgorithm():
             mutate(person)
     return p
 
-stud=geneticAlgorithm()
+
+def test() -> None:
+    stud=geneticAlgorithm()
 
 
-subject = Survivor()
-subject.name = stud.name
-subject.network = stud.cloneNetwork()
-for t in range(200):
-    if subject.alive:
-        subject.advanceTime(True)
-        subject.printToConsole()   #person.advanceTime()
+    subject = Survivor()
+    subject.name = stud.name
+    subject.network = stud.cloneNetwork()
+    for t in range(200):
+        if subject.alive:
+            subject.advanceTime(True)
+            subject.printToConsole()
+            #person.advanceTime()
             #person.printToConsole()
+
+
+if __name__ == "__main__":
+    test()
