@@ -48,29 +48,31 @@ class Node:
             else:
                 self.value = 1
 
+
 class HopfieldNetwork:
     def __init__(self):
         self.nodes = []
 
     def addNode(self, n: Node):
         self.nodes.append(n)
-    
-    def createConnection(self, nFrom: Node, nTo: Node, w = random.random()):
+
+    def createConnection(self, nFrom: Node, nTo: Node, w=random.random()):
         nTo.addNeighbor(nFrom, w)
 
     def printToConsole(self):
         for n in self.nodes:
             print(f"Node {n.id}-current value: {n.value}, connected to...")
-            for index in range (len(n.weights)):
-                print(f"Neighbor: {n.neighbors[index].id} - Weight: {n.weights[index]}")
+            for index in range(len(n.weights)):
+                print(
+                    f"Neighbor: {n.neighbors[index].id} - Weight: {n.weights[index]}",
+                )
 
-        
 
 def main():
     h = HopfieldNetwork()
-    n1 = Node('a')
-    n2 = Node('b')
-    n3 = Node('c')
+    n1 = Node("a")
+    n2 = Node("b")
+    n3 = Node("c")
     h.addNode(n1)
     h.addNode(n2)
     h.addNode(n3)
@@ -86,7 +88,6 @@ def main():
     n3.value = -1
     h.printToConsole()
     print("hi")
-
 
     for i in range(400):
         print(f"\n\n*******\nIteration {i}\n*******")

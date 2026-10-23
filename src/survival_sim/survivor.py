@@ -25,21 +25,21 @@ __author__ = "Nathan Roth & CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
 import random
+
 from survival_sim.network import Network
 
 
 class Survivor:
-
     MAX_HEALTH = 100
     MAX_HUNGER = 100
     MAX_THIRST = 100
     MAX_SLEEP = 100
 
     def __init__(self):
-        self.thirst = MAX_THIRST
-        self.hunger = MAX_HUNGER
-        self.sleep = MAX_SLEEP
-        self.health = MAX_HEALTH
+        self.thirst = self.MAX_THIRST
+        self.hunger = self.MAX_HUNGER
+        self.sleep = self.MAX_SLEEP
+        self.health = self.MAX_HEALTH
         self.foodStash = 0
         self.waterStash = 0
         self.shelter = 0
@@ -63,7 +63,7 @@ class Survivor:
                 self.thirst += 8
             if self.thirst > 80 and self.health < 95:
                 self.health += 2
-    
+
     def goToBed(self):
         self.sleep = min(100, self.sleep + 10)
 
@@ -97,9 +97,9 @@ class Survivor:
             self.waterStash += 3
 
     def advanceTime(self, printing=False):
-        #get hungrier, get thirstier, lose energy
-        self.hunger = max(self.hunger-3, 0)
-        self.thirst = max(self.thirst-3, 0)
+        # get hungrier, get thirstier, lose energy
+        self.hunger = max(self.hunger - 3, 0)
+        self.thirst = max(self.thirst - 3, 0)
         self.age += 1
 
         if self.shelter < 20:
@@ -109,18 +109,25 @@ class Survivor:
         elif self.shelter < 60:
             self.sleep -= 1
 
-        self.sleep = max(self.sleep-2, 0)
+        self.sleep = max(self.sleep - 2, 0)
         if self.hunger < 20 or self.thirst < 20 or self.sleep < 20:
             self.health -= 1
         if self.health <= 0:
             self.alive = False
         if not self.alive:
-            #print(f"{self.name} just died")
+            # print(f"{self.name} just died")
             return
         self.makeDecision(printing)
 
-    def makeDecision(self,printing=False):
-        self.network.assignInputs(self.thirst, self.hunger, self.sleep, self.shelter, self.foodStash, self.waterStash)
+    def makeDecision(self, printing=False):
+        self.network.assignInputs(
+            self.thirst,
+            self.hunger,
+            self.sleep,
+            self.shelter,
+            self.foodStash,
+            self.waterStash,
+        )
         self.network.propagate()
         x = self.network.getAction()
         if x == "drink":
@@ -139,12 +146,14 @@ class Survivor:
             self.findWater()
         if printing:
             print(f"{self.name} just did the {x} action")
+
     def calculateFitness(self):
         return self.age + self.health
-    
+
     def cloneNetwork(self):
         return self.network.copyNetwork()
-    
-    def printToConsole(self):
-        print(f"{self.name} Hour {self.age}:\tHealth: {self.health}, Hunger: {self.hunger}, Thirst: {self.thirst}, Energy: {self.sleep}, Shelter: {self.shelter}\n")
 
+    def printToConsole(self):
+        print(
+            f"{self.name} Hour {self.age}:\tHealth: {self.health}, Hunger: {self.hunger}, Thirst: {self.thirst}, Energy: {self.sleep}, Shelter: {self.shelter}\n",
+        )

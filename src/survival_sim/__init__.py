@@ -26,18 +26,18 @@ __version__ = "0.0.0"
 __license__ = "GNU General Public License Version 3"
 
 
-from survival_sim.survivor import Survivor
 from survival_sim.genetic import test as genetic_test
+from survival_sim.survivor import Survivor
 
 
 def run() -> None:
     """Run program."""
     s1 = Survivor()
     s2 = Survivor()
-    s1.name="Alice"
+    s1.name = "Alice"
     s2.name = "Bob"
     s = [s1, s2]
-    for t in range(200):
+    for _t in range(200):
         for person in s:
             if person.alive:
                 person.advanceTime()
