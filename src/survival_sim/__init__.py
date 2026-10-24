@@ -131,32 +131,32 @@ def main() -> None:
     parser.add_argument(
         "--generations",
         type=int,
-        default=2000,
-        help="Genetic algorithm generation count",
+        default="2000",
+        help="Genetic algorithm generation count. Defaults to 2000",
     )
     parser.add_argument(
         "--population-size",
         type=int,
-        default=100,
-        help="Population batch size per generation",
+        default="100",
+        help="Population batch size per generation. Defaults to 100",
     )
     parser.add_argument(
         "--max-simulation-iterations",
         type=int,
-        default=200,
-        help="Maximum number of simulation iterations per batch",
+        default="200",
+        help="Maximum number of simulation iterations per batch. Defaults to 200",
     )
     parser.add_argument(
         "--new-network-hidden-layer-count",
         type=int,
-        default=0,
-        help="Number of hidden layers for new networks",
+        default="0",
+        help="Number of hidden layers for new networks. Defaults to 0",
     )
     parser.add_argument(
         "--cull-fraction",
         type=int,
-        default=1,
-        help="Cull the lower 1/(cull fraction) of the population sorted by fitness",
+        default="2",
+        help="Cull the lower 1/(cull fraction) of the population sorted by fitness. Defaults to 2",
     )
 
     args = parser.parse_args()
