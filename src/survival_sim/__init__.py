@@ -30,7 +30,7 @@ from survival_sim.genetic import main as main
 from survival_sim.survivor import Survivor
 
 
-def run() -> None:
+def test() -> None:
     """Run program."""
     s1 = Survivor("Alice")
     s2 = Survivor("Bob")
@@ -41,13 +41,11 @@ def run() -> None:
                 survivor.advance_time()
                 survivor.print_information()
 
-    main()
-
 
 def cli_run() -> None:
     """CLI entrypoint."""
     print(f"{__title__} v{__version__}\nProgrammed by {__author__}.\n")
-    run()
+    main()
 
 
 if __name__ == "__main__":

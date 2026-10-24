@@ -148,7 +148,7 @@ def get_best_fitness(survivors: Iterable[Survivor]) -> tuple[int, Survivor]:
 def genetic_algorithm(
     initial_population: list[Survivor],
     generations: int,
-    max_simulation_iterations: int | None = None,
+    max_simulation_iterations: int | None = 200,
     cull_fraction: int = 2,
 ) -> Survivor:
     """Return the survivor with the best fitness after given number of generations."""
@@ -209,7 +209,7 @@ def save_survivor(saved_survivors_folder: Path, survivor: Survivor) -> None:
         saved_survivors_folder.mkdir()
 
     filepath = saved_survivors_folder / filename
-    filepath.write_bytes(survivor.serialize() + b"\n")
+    filepath.write_bytes(survivor.serialize())
     print(f"Saved survivor as {str(filepath)!r}")
 
 
@@ -262,15 +262,16 @@ def main() -> None:
 
     population_size = 100
     hidden_layers = 1
-    iterations = 2000
+    generations = 2000
+    max_simulation_iterations = 400
 
     load_survivors = False
     if saved_survivors_folder.exists():
         load_survivors = (
             input(
-                "Would you like to load initial survivors instead starting with new random survivors? (Y/n): ",
-            )
-            != "n"
+                "Would you like to load initial survivors instead starting with new random survivors? (y/N): ",
+            ).lower()
+            == "y"
         )
 
     if load_survivors:
@@ -287,7 +288,11 @@ def main() -> None:
 
     input("Press enter to start.\n")
 
-    best_survivor = genetic_algorithm(survivors, iterations)
+    best_survivor = genetic_algorithm(
+        survivors,
+        generations,
+        max_simulation_iterations,
+    )
     # print(f"{best_survivor = }")
 
     survivor = Survivor(

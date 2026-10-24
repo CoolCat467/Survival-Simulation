@@ -214,7 +214,7 @@ class BaseSurvivor:
         self.energy = max(0, self.energy - 2)
 
         # take damage from poor conditions
-        if self.hunger < 20 or self.thirst < 20 or self.energy < 20:
+        if self.thirst < 20 or self.hunger < 20 or self.energy < 20:
             self.health -= 1
 
         if not self.alive:
@@ -255,7 +255,13 @@ class BaseSurvivor:
 
     def calculate_fitness(self) -> int:
         """Return fitness."""
-        return self.age + self.health
+        return (
+            self.age
+            + self.health
+            + min(self.MAX_THIRST, self.thirst)
+            + min(self.MAX_HUNGER, self.hunger)
+            + min(self.MAX_ENERGY, self.energy)
+        )
 
     def print_information(self) -> None:
         """Print general status information."""
@@ -296,7 +302,10 @@ class BaseSurvivor:
 
     def serialize(self) -> bytes:
         """Return json payload from instance."""
-        return orjson.dumps(self)
+        return orjson.dumps(
+            self,
+            option=orjson.OPT_INDENT_2 | orjson.OPT_APPEND_NEWLINE,
+        )
 
     @classmethod
     def from_bytes(cls, payload: bytes) -> Self:

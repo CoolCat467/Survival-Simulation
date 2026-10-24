@@ -199,12 +199,18 @@ class Network(Generic[Number]):
         for layer_index, layer in enumerate(self.layers):
             for node_index, node in enumerate(layer):
                 for weight_index in range(len(node.weights)):
-                    x = random.randint(1, 10)  # noqa: S311
+                    x = random.randint(1, 20)  # noqa: S311
                     delta = 0
-                    if x == 1 or x == 2:
+                    # if x == 1 or x == 2:
+                    if x in (1, 2, 3):
                         delta = 5
-                    elif x == 3 or x == 4:
+                    elif x == 4:
+                        delta = 1
+                    # elif x == 3 or x == 4:
+                    elif x in (5, 6, 7):
                         delta = -5
+                    elif x == 8:
+                        delta = -1
                     if delta:
                         changes.append(
                             (layer_index, node_index, weight_index, delta),
@@ -274,7 +280,10 @@ class Network(Generic[Number]):
 
     def serialize(self) -> bytes:
         """Return json payload from instance."""
-        return orjson.dumps(self)
+        return orjson.dumps(
+            self,
+            option=orjson.OPT_INDENT_2 | orjson.OPT_APPEND_NEWLINE,
+        )
 
     @staticmethod
     def deserialize_layers(
