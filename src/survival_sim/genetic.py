@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 
 
 def clone_best(survivors: list[Survivor], fraction: int) -> list[Survivor]:
+    """Return a clone of the top 1/fraction survivors and cull everything below."""
     fitness_sorted = sorted(
         survivors,
         key=lambda survivor: survivor.calculate_fitness(),
@@ -43,70 +44,91 @@ def clone_best(survivors: list[Survivor], fraction: int) -> list[Survivor]:
     for parent in fitness_sorted[: len(fitness_sorted) // fraction]:
         for _j in range(fraction):
             child = Survivor(
-                name=parent.name,
-                network=parent.clone_network(),
+                parent.name,
+                network=parent.network,
             )
             new_survivors.append(child)
+    ##    new_survivors[-1] = Survivor(fitness_sorted[-1].name)
     return new_survivors
 
 
 # INEFFICIENT...JUST USE PICK BEST
-def generate_new_population(survivors: list[Survivor]) -> list[Survivor]:
-    return clone_best(survivors, 2)
+def generate_new_population(
+    survivors: list[Survivor],
+    cull_fraction: int = 2,
+) -> list[Survivor]:
+    """Return a new population after culling 1/cull_fraction and cloning the rest."""
+    return clone_best(survivors, cull_fraction)
 
 
-def simulate_survival_trial(survivors: list[Survivor], max_time: int) -> None:
-    for _t in range(max_time):
-        for survivor in survivors:
+def simulate_survival_trial(
+    survivors: Iterable[Survivor],
+    iterations: int,
+) -> None:
+    """Simulate a population of survivors for a given number if iterations."""
+    # Get a copy of references to the survivors. Only need to tick the
+    # ones that are alive.
+    active_survivors = list(survivors)
+
+    for _t in range(iterations):
+        index = 0
+        for survivor in tuple(active_survivors):
+            survivor.advance_time()
             if survivor.alive:
-                survivor.advance_time()
+                index += 1
+                continue
+            del active_survivors[index]
 
 
 def mutate(survivor: Survivor) -> None:
-    survivor.network.mutate()
+    """Potentially mutate a survivor *IN-PLACE*."""
+    survivor.mutate()
 
 
 def initialize_population(count: int = 100) -> list[Survivor]:
+    """Return a population of new survivors."""
     return [Survivor(name=f"survivor {i}") for i in range(count)]
 
 
 def print_population_results(survivors: list[Survivor]) -> None:
-    for best_survivor in survivors:
+    """Print information about all survivors in a given population."""
+    for survivor in survivors:
         print(
-            f"{best_survivor.name}: {best_survivor.calculate_fitness()} - alive for {best_survivor.age} and current health of {best_survivor.health}",
+            f"{survivor.name}: {survivor.calculate_fitness()} - alive for {survivor.age} and current health of {survivor.health}",
         )
 
 
-def print_top_best(survivors: list[Survivor], num: int) -> None:
+def print_top_best(survivors: list[Survivor], count: int) -> None:
+    """Print the top count survivors by fitness."""
     fitness_sorted = sorted(
         survivors,
         key=lambda survivor: survivor.calculate_fitness(),
         reverse=True,
     )
-    for survivor in fitness_sorted[:num]:
+    for survivor in fitness_sorted[:count]:
         print(
             f"{survivor.name}: {survivor.calculate_fitness()} - alive for {survivor.age} and current health of {survivor.health}",
         )
 
 
 def get_best_fitness(survivors: Iterable[Survivor]) -> tuple[int, Survivor]:
-    high = 0
-    survivor = None
-    for best_survivor in survivors:
-        if best_survivor.calculate_fitness() > high:
-            high = best_survivor.calculate_fitness()
-            survivor = best_survivor
-    if survivor is None:
-        raise ValueError("Must have survivors to iterate over")
-    return high, survivor
+    """Return the survivor with the best fitness."""
+    fitness_survivors = [
+        (survivor.calculate_fitness(), survivor) for survivor in survivors
+    ]
+    return max(
+        fitness_survivors,
+        key=lambda fitness_survivor: fitness_survivor[0],
+    )
 
 
 def genetic_algorithm(
     generations: int,
     population_size: int = 100,
-    max_simulation_hours: int = 200,
+    max_simulation_iterations: int = 200,
+    cull_fraction: int = 2,
 ) -> Survivor:
-
+    """Return the survivor with the best fitness after given number of generations."""
     # randomly initialize population
     # determine fitness of population
     # repeat
@@ -122,10 +144,10 @@ def genetic_algorithm(
     try:
         for generation in range(generations):
             # print(f"**********\nGENERATION {generation}\n**********\n")
-            simulate_survival_trial(survivors, max_simulation_hours)
+            simulate_survival_trial(survivors, max_simulation_iterations)
             # print_population_results(survivors)
             # print_top_best(survivors, 3)
-            best_fitness, best_survivor = get_best_fitness(survivors)
+            best_fitness, survivor = get_best_fitness(survivors)
 
             if best_fitness > high_score:
                 print(
@@ -133,7 +155,7 @@ def genetic_algorithm(
                 )
                 high_score = best_fitness
                 print()
-                print(f"{best_survivor.network = }")
+                print(f"{survivor.network = }")
                 print()
                 last_print_generation = generation
             elif (
@@ -142,16 +164,17 @@ def genetic_algorithm(
                 last_print_generation = generation
                 print(f"{generation = }")
                 # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
-            survivors = generate_new_population(survivors)
+            survivors = generate_new_population(survivors, cull_fraction)
             for survivor in survivors:
                 mutate(survivor)
     except KeyboardInterrupt:
         print("Genetic algorithm interrupted.")
-    return best_survivor
+    return survivor
 
 
-def test() -> None:
-    best_survivor = genetic_algorithm(180)
+def main() -> None:
+    """Run genetic algorithm simulation."""
+    best_survivor = genetic_algorithm(300)
     print(f"{best_survivor = }")
 
     survivor = Survivor(
@@ -167,4 +190,4 @@ def test() -> None:
 
 
 if __name__ == "__main__":
-    test()
+    main()

@@ -26,7 +26,7 @@ __version__ = "0.0.0"
 __license__ = "GNU General Public License Version 3"
 
 
-from survival_sim.genetic import test as genetic_test
+from survival_sim.genetic import main as main
 from survival_sim.survivor import Survivor
 
 
@@ -41,7 +41,7 @@ def run() -> None:
                 survivor.advance_time()
                 survivor.print_information()
 
-    genetic_test()
+    main()
 
 
 def cli_run() -> None:
