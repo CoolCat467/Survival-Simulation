@@ -26,12 +26,50 @@ __license__ = "GNU General Public License Version 3"
 
 import dataclasses
 import random
+from functools import wraps
 from typing import TYPE_CHECKING, ClassVar
 
 from survival_sim.network import ActionNetwork
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
+
+
+def costs_energy(
+    energy_cost: int,
+) -> Callable[
+    [Callable[[BaseSurvivor], None]],
+    Callable[[BaseSurvivor], None],
+]:
+    """Return decorator to prevent an action from working if not enough energy to pay energy cost."""
+
+    def action_decorator(
+        action_function: Callable[[BaseSurvivor], None],
+    ) -> Callable[[BaseSurvivor], bool]:
+        """Return wrapped action function that incurs energy cost and won't run if not enough energy."""
+
+        @wraps(action_function)
+        def wrapper(self: BaseSurvivor) -> bool:
+            """Return if successfully performed wrapped action function."""
+            if not self.can_perform_action(energy_cost):
+                # not successful
+                return False
+            self.energy -= energy_cost
+
+            # Perform original action
+            action_function(self)
+
+            return True
+
+        if wrapper.__doc__:
+            wrapper.__doc__ += " "
+        wrapper.__doc__ += f"""Costs {energy_cost} energy.
+
+Returns False if could not perform action because of not enough energy, True if successful."""
+
+        return wrapper
+
+    return action_decorator
 
 
 @dataclasses.dataclass(slots=True)
@@ -39,13 +77,13 @@ class BaseSurvivor:
     MAX_HEALTH: ClassVar = 100
     MAX_HUNGER: ClassVar = 100
     MAX_THIRST: ClassVar = 100
-    MAX_SLEEP: ClassVar = 100
+    MAX_ENERGY: ClassVar = 100
 
     name: str
 
     thirst: int = MAX_THIRST
     hunger: int = MAX_HUNGER
-    sleep: int = MAX_SLEEP
+    energy: int = MAX_ENERGY
     health: int = MAX_HEALTH
     food_stash: int = 0
     water_stash: int = 0
@@ -56,6 +94,10 @@ class BaseSurvivor:
     def alive(self) -> bool:
         """Return if health is greater than zero."""
         return self.health > 0
+
+    def can_perform_action(self, energy_cost: int) -> bool:
+        """Return if able to perform an action that costs a given amount of energy."""
+        return self.energy >= energy_cost
 
     def action_eat(self) -> None:
         """Perform eat action."""
@@ -79,8 +121,9 @@ class BaseSurvivor:
 
     def action_sleep(self) -> None:
         """Perform sleep action."""
-        self.sleep = min(self.MAX_SLEEP, self.sleep + 10)
+        self.energy = min(self.MAX_ENERGY, self.energy + 10)
 
+    @costs_energy(5)
     def action_make_shelter(self) -> None:
         """Perform make shelter action."""
         if self.shelter < 40:
@@ -91,22 +134,22 @@ class BaseSurvivor:
             # Old said -= 5 here, I think that's a typo?
             # self.shelter -= 5
             self.shelter += 5
-        self.sleep -= 5
 
+    @costs_energy(3)
     def action_scavenge(self) -> None:
         """Perform scavenge action."""
         chance = random.randint(1, 6)  # noqa: S311
         if chance < 5:
             self.food_stash += 1
-        self.sleep -= 3
 
+    @costs_energy(8)
     def action_hunt(self) -> None:
         """Perform hunt action."""
         chance = random.randint(1, 6)  # noqa: S311
         if chance < 3:
             self.food_stash += 3
-        self.sleep -= 8
 
+    @costs_energy(2)
     def action_find_water(self) -> None:
         """Perform find water action."""
         chance = random.randint(1, 6)  # noqa: S311
@@ -114,7 +157,6 @@ class BaseSurvivor:
             self.water_stash += 1
         elif chance < 6:
             self.water_stash += 3
-        self.sleep -= 2
 
     def decide_action(self) -> str:
         """Return an action to perform."""
@@ -128,32 +170,46 @@ class BaseSurvivor:
         self.age += 1
 
         if self.shelter < 20:
-            self.sleep -= 5
+            self.energy -= 5
         elif self.shelter < 40:
-            self.sleep -= 3
+            self.energy -= 3
         elif self.shelter < 60:
-            self.sleep -= 1
+            self.energy -= 1
 
-        self.sleep = max(self.sleep - 2, 0)
-        if self.hunger < 20 or self.thirst < 20 or self.sleep < 20:
+        self.energy = max(0, self.energy - 2)
+
+        # take damage from poor conditions
+        if self.hunger < 20 or self.thirst < 20 or self.energy < 20:
             self.health -= 1
+
         if not self.alive:
             if printing:
                 print(f"{self.name} is dead")
             return
 
         action = self.decide_action()
-        self.perform_action(action)
+        success = self.perform_action(action)
         if printing:
-            print(f"{self.name} just did the {action} action")
+            if success:
+                print(f"{self.name} just did the {action} action")
+            else:
+                print(
+                    f"{self.name} wanted to do the {action} action but was too tired",
+                )
 
-    def perform_action(self, action: str) -> None:
-        """Perform the given action."""
+    def perform_action(self, action: str) -> bool:
+        """Perform the given action. Return if successful.
+
+        Not successful if energy was too low.
+        """
         action_title = action.replace(" ", "_")
         perform_action_function = getattr(self, f"action_{action_title}", None)
         if perform_action_function is not None:
             assert callable(perform_action_function)
-            perform_action_function()
+            result = perform_action_function()
+            if result is not None:
+                return bool(result)
+        return True
 
     def calculate_fitness(self) -> int:
         """Return fitness."""
@@ -162,7 +218,7 @@ class BaseSurvivor:
     def print_information(self) -> None:
         """Print general status information."""
         print(
-            f"{self.name} Hour {self.age}:\tHealth: {self.health}, Hunger: {self.hunger}, Thirst: {self.thirst}, Energy: {self.sleep}, Shelter: {self.shelter}\n",
+            f"{self.name} Hour {self.age}:\tHealth: {self.health}, Hunger: {self.hunger}, Thirst: {self.thirst}, Energy: {self.energy}, Shelter: {self.shelter}\n",
         )
 
     @classmethod

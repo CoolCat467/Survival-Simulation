@@ -101,7 +101,11 @@ def get_best_fitness(survivors: Iterable[Survivor]) -> tuple[int, Survivor]:
     return high, survivor
 
 
-def genetic_algorithm(generations: int) -> Survivor:
+def genetic_algorithm(
+    generations: int,
+    population_size: int = 100,
+    max_simulation_hours: int = 200,
+) -> Survivor:
 
     # randomly initialize population
     # determine fitness of population
@@ -112,13 +116,13 @@ def genetic_algorithm(generations: int) -> Survivor:
     # calculate fitness on new population
 
     # randomly initialize population
-    survivors = initialize_population()
+    survivors = initialize_population(population_size)
     high_score = 0
     last_print_generation = 0
     try:
         for generation in range(generations):
             # print(f"**********\nGENERATION {generation}\n**********\n")
-            simulate_survival_trial(survivors, 200)
+            simulate_survival_trial(survivors, max_simulation_hours)
             # print_population_results(survivors)
             # print_top_best(survivors, 3)
             best_fitness, best_survivor = get_best_fitness(survivors)
@@ -132,7 +136,9 @@ def genetic_algorithm(generations: int) -> Survivor:
                 print(f"{best_survivor.network = }")
                 print()
                 last_print_generation = generation
-            elif generation - last_print_generation > 5:
+            elif (
+                generation - last_print_generation >= 5 and not generation % 5
+            ):
                 last_print_generation = generation
                 print(f"{generation = }")
                 # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
@@ -145,7 +151,7 @@ def genetic_algorithm(generations: int) -> Survivor:
 
 
 def test() -> None:
-    best_survivor = genetic_algorithm(120)
+    best_survivor = genetic_algorithm(180)
     print(f"{best_survivor = }")
 
     survivor = Survivor(
