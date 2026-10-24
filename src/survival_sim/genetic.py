@@ -25,11 +25,8 @@ __author__ = "Nathan Roth & CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
 
-from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from survival_sim.network import ActionNetwork
 from survival_sim.survivor import Survivor
 
 if TYPE_CHECKING:
@@ -51,7 +48,6 @@ def clone_best(survivors: list[Survivor], fraction: int) -> list[Survivor]:
                 network=parent.network,
             )
             new_survivors.append(child)
-    ##    new_survivors[-1] = Survivor(fitness_sorted[-1].name)
     return new_survivors
 
 
@@ -191,127 +187,3 @@ def genetic_algorithm(
     except KeyboardInterrupt:
         print("Genetic algorithm interrupted.")
     return survivor
-
-
-def current_iso_timestamp() -> str:
-    """Return current ISO timestamp up to seconds."""
-    return datetime.today().isoformat(timespec="seconds")
-
-
-def save_survivor(saved_survivors_folder: Path, survivor: Survivor) -> None:
-    """Save given survivor to file."""
-    default_name = current_iso_timestamp().replace(":", "-")
-    name = input(f"Enter custom name (default {default_name!r} if blank): ")
-    if not name:
-        name = default_name
-    filename = f"{name}.json"
-    if not saved_survivors_folder.exists():
-        saved_survivors_folder.mkdir()
-
-    filepath = saved_survivors_folder / filename
-    filepath.write_bytes(survivor.serialize())
-    print(f"Saved survivor as {str(filepath)!r}")
-
-
-def load_network(network_filepath: Path) -> ActionNetwork[int]:
-    """Return network loaded from given filepath."""
-    return ActionNetwork[int].from_bytes(network_filepath.read_bytes())
-
-
-def load_survivor(survivor_filepath: Path) -> Survivor:
-    """Return network loaded from given filepath."""
-    return Survivor.from_bytes(survivor_filepath.read_bytes())
-
-
-def yield_json_files(folder: Path) -> Generator[Path, None, None]:
-    """Yield json files from given folder."""
-    if not folder.exists():
-        return
-    for file in folder.iterdir():
-        if not file.is_file():
-            continue
-        if file.suffix != ".json":
-            continue
-        yield file
-
-
-def load_population(
-    saved_survivors_folder: Path,
-) -> list[Survivor]:
-    """Load all survivors from folder."""
-    survivors = []
-    for index, survivor_filepath in enumerate(
-        yield_json_files(saved_survivors_folder),
-    ):
-        original_survivor = load_survivor(survivor_filepath)
-        survivors.append(
-            Survivor(
-                f"loaded survivor {index}",
-                network=original_survivor.network,
-            ),
-        )
-
-    return survivors
-
-
-def main() -> None:
-    """Run genetic algorithm simulation."""
-    this_file = Path(__file__).absolute()
-    this_folder = this_file.parent
-    saved_survivors_folder = this_folder / "survivor_data"
-
-    population_size = 100
-    hidden_layers = 1
-    generations = 2000
-    max_simulation_iterations = 400
-
-    load_survivors = False
-    if saved_survivors_folder.exists():
-        load_survivors = (
-            input(
-                "Would you like to load initial survivors instead starting with new random survivors? (y/N): ",
-            ).lower()
-            == "y"
-        )
-
-    if load_survivors:
-        survivors = load_population(saved_survivors_folder)
-        print(f"Loaded {len(survivors)} survivors from files.")
-
-        # Pad missing with new random survivors
-        missing = population_size - len(survivors)
-        survivors.extend(initialize_population(missing, hidden_layers))
-        print(f"Created {missing} new random survivors.\n")
-    else:
-        # randomly initialize population
-        survivors = initialize_population(population_size, hidden_layers)
-
-    input("Press enter to start.\n")
-
-    best_survivor = genetic_algorithm(
-        survivors,
-        generations,
-        max_simulation_iterations,
-    )
-    # print(f"{best_survivor = }")
-
-    survivor = Survivor(
-        best_survivor.name,
-        network=best_survivor.clone_network(),
-    )
-
-    print()
-    if input("Would you like to save this survivor? (Y/n): ").lower() != "n":
-        save_survivor(saved_survivors_folder, best_survivor)
-
-    # for _t in range(200):
-    while survivor.alive:
-        if survivor.alive:
-            survivor.advance_time(True)
-            survivor.print_information()
-            # survivor.advanceTime()
-            # survivor.print_information()
-
-
-if __name__ == "__main__":
-    main()
