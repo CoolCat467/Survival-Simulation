@@ -181,7 +181,7 @@ def genetic_algorithm(
 
 def main() -> None:
     """Run genetic algorithm simulation."""
-    best_survivor = genetic_algorithm(300)
+    best_survivor = genetic_algorithm(2000)
     print(f"{best_survivor = }")
 
     survivor = Survivor(
