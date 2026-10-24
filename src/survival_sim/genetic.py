@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 from survival_sim.survivor import Survivor
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Generator, Iterable
 
 
 def clone_best(survivors: list[Survivor], fraction: int) -> list[Survivor]:
@@ -61,16 +61,30 @@ def generate_new_population(
     return clone_best(survivors, cull_fraction)
 
 
+def while_truthy_gen(obj: object) -> Generator[int, None, None]:
+    """Yield increasing count number while obj is truthy."""
+    i = 0
+    while obj:
+        yield i
+        i += 1
+
+
 def simulate_survival_trial(
     survivors: Iterable[Survivor],
-    iterations: int,
+    iterations: int | None = None,
 ) -> None:
     """Simulate a population of survivors for a given number if iterations."""
     # Get a copy of references to the survivors. Only need to tick the
     # ones that are alive.
     active_survivors = list(survivors)
 
-    for _t in range(iterations):
+    iterate: Iterable[int]
+    if iterations is not None:
+        iterate = range(iterations)
+    else:
+        iterate = while_truthy_gen(active_survivors)
+
+    for _t in iterate:
         index = 0
         for survivor in tuple(active_survivors):
             survivor.advance_time()
@@ -131,7 +145,7 @@ def get_best_fitness(survivors: Iterable[Survivor]) -> tuple[int, Survivor]:
 def genetic_algorithm(
     generations: int,
     population_size: int = 100,
-    max_simulation_iterations: int = 200,
+    max_simulation_iterations: int | None = None,
     cull_fraction: int = 2,
     hidden_layers: int = 1,
 ) -> Survivor:
@@ -188,7 +202,8 @@ def main() -> None:
         best_survivor.name,
         network=best_survivor.clone_network(),
     )
-    for _t in range(200):
+    # for _t in range(200):
+    while survivor.alive:
         if survivor.alive:
             survivor.advance_time(True)
             survivor.print_information()
