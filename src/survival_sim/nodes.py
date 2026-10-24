@@ -27,7 +27,7 @@ __license__ = "GNU General Public License Version 3"
 
 import math
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
 if TYPE_CHECKING:
@@ -51,6 +51,8 @@ else:
 
 @dataclass(slots=True, frozen=True)
 class Node(Generic[Number]):
+    """Node class with partial value calculation from inputs."""
+
     weights: list[Number]
 
     def get_value(self, inputs: Iterable[Number]) -> Number:
@@ -62,36 +64,39 @@ class Node(Generic[Number]):
         return self.__class__(list(self.weights))
 
 
-class InputNode:
-    def __init__(self, name: str, value: int = 0) -> None:
-        self.name = name
-        self.value = value
+@dataclass(slots=True)
+class SharedNode:
+    """Shared node class."""
 
-        # list of nodes
-        self.outputs: list[OutputNode] = []
-        # list of weights
-        self.weights: list[int] = []
+    name: str
+    value: int = 0
+    weights: list[int] = field(default_factory=list)
 
     def set_value(self, v: int) -> None:
+        """Set value."""
         self.value = v
 
     def get_value(self) -> int:
+        """Return value."""
         return self.value
 
 
-class OutputNode:
-    def __init__(self, name: str, value: int = 0) -> None:
-        self.name = name
-        self.value = value
+@dataclass(slots=True)
+class InputNode(SharedNode):
+    """Input node."""
 
-        self.inputs: list[InputNode] = []
-        self.weights: list[int] = []
+    outputs: list[OutputNode] = field(default_factory=list)
 
-    def get_value(self) -> int:
-        return self.value
+
+@dataclass(slots=True)
+class OutputNode(SharedNode):
+    """Output node."""
+
+    inputs: list[InputNode] = field(default_factory=list)
 
 
 def test() -> None:
+    """Perform node test."""
     node = Node(weights=[0.25, 0.5])
     print(f"{node = }")
     print(f"{node.get_value((2.0, 4.0)) = }")

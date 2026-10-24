@@ -37,10 +37,16 @@ if TYPE_CHECKING:
 
 
 class OldNetwork:
-    def __init__(self) -> None:
-        self.setup_network()
+    """Old network."""
 
-    def setup_network(self) -> None:
+    __slots__ = ("input_nodes", "output_nodes")
+
+    def __init__(self) -> None:
+        """Initialize network."""
+        self.setup_layers()
+
+    def setup_layers(self) -> None:
+        """Initialize the layers for this network."""
         self.input_nodes = [
             InputNode("thirst"),
             InputNode("hunger"),
@@ -76,6 +82,7 @@ class OldNetwork:
         food: int = 0,
         water: int = 0,
     ) -> None:
+        """Assign input values to nodes."""
         self.input_nodes[0].value = thirst
         self.input_nodes[1].value = hunger
         self.input_nodes[2].value = energy
@@ -84,6 +91,7 @@ class OldNetwork:
         self.input_nodes[5].value = water
 
     def print_information(self) -> None:
+        """Print information about this network."""
         # for i in self.input_nodes:
         # print(f"{i.name} node\n\tValue:{i.get_value()}\n\tConnections:")
         # for index in range (len(i.outputs)):
@@ -94,6 +102,7 @@ class OldNetwork:
                 print(f"\t\t{i.inputs[index].name}: {i.weights[index]}")
 
     def propagate(self) -> None:
+        """Propagate inputs through the network."""
         for node in self.output_nodes:
             node.value = 0
             for index in range(len(node.inputs)):
@@ -103,6 +112,7 @@ class OldNetwork:
             # print(f"{node.name} now has a value of {node.value}")
 
     def get_action(self) -> str:
+        """Return the action name with the highest value."""
         action_node = max(
             self.output_nodes,
             key=lambda node: node.get_value(),
@@ -110,6 +120,7 @@ class OldNetwork:
         return action_node.name
 
     def copy(self) -> Self:
+        """Return a deep copy of this network."""
         new_network = self.__class__()
         for i in range(len(new_network.input_nodes)):
             for j in range(len(new_network.input_nodes[i].weights)):
@@ -124,6 +135,7 @@ class OldNetwork:
         return new_network
 
     def mutate(self) -> None:
+        """Mutate weights randomly *IN-PLACE*."""
         for node in self.output_nodes:
             for index in range(len(node.weights)):
                 x = random.randint(1, 10)  # noqa: S311
@@ -137,12 +149,14 @@ class OldNetwork:
                     # print(node.weights[index])
 
     def get_hash(self) -> None:
+        """Incomplete hash function."""
         for i in range(len(self.input_nodes)):
             for _j in range(len(self.input_nodes[i].weights)):
-                pass
+                raise NotImplementedError()
 
 
 def test_old() -> None:
+    """Run test of old network."""
     n = OldNetwork()
     # n.propagate()
     n.print_information()
@@ -155,6 +169,8 @@ def test_old() -> None:
 
 @dataclass(frozen=True, slots=True)
 class Network(Generic[Number]):
+    """Base network with feed forward and mutations."""
+
     layers: list[list[Node[Number]]]
 
     def feed_forward(self, inputs: list[Number]) -> list[Number]:
@@ -165,25 +181,63 @@ class Network(Generic[Number]):
             input_ = output
         return output
 
-    def mutate(self) -> None:
-        """Randomly mutate the weights of all nodes in all layers."""
-        for layer in self.layers:
-            for node in layer:
-                for index in range(len(node.weights)):
+    def get_random_mutation_changes(self) -> list[tuple[int, int, int, int]]:
+        """Return a random list of (layer, node, weight, weight delta) mutations."""
+        # layer, node, weight, weight delta
+        changes: list[tuple[int, int, int, int]] = []
+        for layer_index, layer in enumerate(self.layers):
+            for node_index, node in enumerate(layer):
+                for weight_index in range(len(node.weights)):
                     x = random.randint(1, 10)  # noqa: S311
+                    delta = 0
                     if x == 1 or x == 2:
-                        node.weights[index] += 5
+                        delta = 5
                     elif x == 3 or x == 4:
-                        node.weights[index] -= 5
+                        delta = -5
+                    if delta:
+                        changes.append(
+                            (layer_index, node_index, weight_index, delta),
+                        )
+        return changes
+
+    def apply_mutations(
+        self,
+        mutations: list[tuple[int, int, int, int]],
+    ) -> None:
+        """Apply given mutations *IN PLACE*."""
+        for layer_index, node_index, weight_index, delta in mutations:
+            self.layers[layer_index][node_index].weights[weight_index] += delta
+
+    def layers_copy(self) -> list[list[Node[Number]]]:
+        """Return a deep copy of this network's layers."""
+        return [[node.copy() for node in layer] for layer in self.layers]
+
+    def copy(self) -> Self:
+        """Return a deep copy of this network."""
+        return self.__class__(self.layers_copy())
+
+    def mutate(self) -> Self:
+        """Return new version of network after potentially mutating weights.
+
+        Randomly mutate the weights of all nodes in all layers.
+        """
+        mutations = self.get_random_mutation_changes()
+        if not mutations:
+            return self
+        copy = self.copy()
+        copy.apply_mutations(mutations)
+        return copy
 
 
 @dataclass(frozen=True, slots=True, repr=True)
 class ActionNetwork(Network[Number], Generic[Number]):
+    """Network with named inputs and named action outputs."""
+
     input_names: tuple[str, ...]
     action_names: tuple[str, ...]
 
     @staticmethod
-    def setup_network(
+    def setup_layers(
         input_names: Sequence[str],
         action_names: Sequence[str],
     ) -> list[list[Node[int]]]:
@@ -208,7 +262,7 @@ class ActionNetwork(Network[Number], Generic[Number]):
         """Initialize action network."""
         class_init = cast("type[ActionNetwork[int]]", cls)  # type: ignore[redundant-cast]
         return class_init(
-            cls.setup_network(input_names, action_names),
+            cls.setup_layers(input_names, action_names),
             tuple(input_names),
             tuple(action_names),
         )
@@ -233,15 +287,15 @@ class ActionNetwork(Network[Number], Generic[Number]):
 
     def copy(self) -> Self:
         """Return a deep copy of this network."""
-        layers = [[node.copy() for node in layer] for layer in self.layers]
         return self.__class__(
-            layers,
+            self.layers_copy(),
             self.input_names,
             self.action_names,
         )
 
 
 def test() -> None:
+    """Run action network test."""
     input_fields = (
         "thirst",
         "hunger",
