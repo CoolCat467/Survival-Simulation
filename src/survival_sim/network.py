@@ -26,7 +26,10 @@ __license__ = "GNU General Public License Version 3"
 
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, cast
+from typing import TYPE_CHECKING, Generic, TypedDict, cast
+
+import orjson
+from typing_extensions import override
 
 from survival_sim.nodes import InputNode, Node, Number, OutputNode
 
@@ -167,6 +170,12 @@ def test_old() -> None:
     p.print_information()
 
 
+class SerializedNetwork(TypedDict, Generic[Number]):
+    """Serialized network data."""
+
+    layers: list[list[dict[str, list[Number]]]]
+
+
 @dataclass(frozen=True, slots=True)
 class Network(Generic[Number]):
     """Base network with feed forward and mutations."""
@@ -263,8 +272,39 @@ class Network(Generic[Number]):
             layer_input_count = current_layer_node_count
         return layers
 
+    @staticmethod
+    def deserialize_layers(
+        layer_data: list[list[dict[str, list[Number]]]],
+    ) -> list[list[Node[Number]]]:
+        """Return Node objects from serialized layer data."""
+        return [
+            [Node(**node_data) for node_data in layer] for layer in layer_data
+        ]
 
-@dataclass(frozen=True, slots=True, repr=True)
+    @classmethod
+    def from_dict(cls, data: SerializedNetwork[Number]) -> Self:
+        """Return instance from dictionary."""
+        layers = cls.deserialize_layers(data["layers"])
+        return cls(layers)
+
+    @classmethod
+    def from_bytes(cls, payload: bytes) -> Self:
+        """Return instance from json payload."""
+        return cls.from_dict(orjson.loads(payload))
+
+
+class SerializedActionNetwork(
+    SerializedNetwork[Number],
+    TypedDict,
+    Generic[Number],
+):
+    """Serialized action network data."""
+
+    input_names: list[str]
+    action_names: list[str]
+
+
+@dataclass(frozen=True, slots=True)
 class ActionNetwork(Network[Number], Generic[Number]):
     """Network with named inputs and named action outputs."""
 
@@ -314,6 +354,20 @@ class ActionNetwork(Network[Number], Generic[Number]):
             self.layers_copy(),
             self.input_names,
             self.action_names,
+        )
+
+    @classmethod
+    @override
+    def from_dict(  # type: ignore[override]
+        cls,
+        data: SerializedActionNetwork[Number],
+    ) -> Self:
+        """Return instance from dictionary."""
+        layers = cls.deserialize_layers(data["layers"])
+        return cls(
+            layers,
+            tuple(data["input_names"]),
+            tuple(data["action_names"]),
         )
 
 

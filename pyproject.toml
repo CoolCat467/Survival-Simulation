@@ -32,7 +32,10 @@ classifiers = [
     "Typing :: Typed",
 ]
 keywords = []
-dependencies = []
+dependencies = [
+    "orjson>=3.13.0",
+    "typing-extensions>=4.16.0",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "survival_sim.__version__"}

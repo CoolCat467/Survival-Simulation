@@ -29,10 +29,14 @@ import random
 from functools import wraps
 from typing import TYPE_CHECKING, ClassVar
 
+import orjson
+
 from survival_sim.network import ActionNetwork
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Iterable
+
+    from typing_extensions import Self
 
 
 def combine_end(data: Iterable[str], final: str = "and") -> str:
@@ -210,7 +214,9 @@ class BaseSurvivor:
         self.energy = max(0, self.energy - 2)
 
         # take damage from poor conditions
-        if self.hunger < 20 or self.thirst < 20 or self.energy < 20:
+        if self.hunger < 20 or self.thirst < 20:
+            self.health -= 5
+        if self.energy < 20:
             self.health -= 1
 
         if not self.alive:
@@ -290,6 +296,15 @@ class BaseSurvivor:
             if k in input_fields
         }
 
+    def serialize(self) -> bytes:
+        """Return json payload from instance."""
+        return orjson.dumps(self)
+
+    @classmethod
+    def from_bytes(cls, payload: bytes) -> Self:
+        """Return instance from json payload."""
+        return cls(**orjson.loads(payload))
+
 
 # Would have loved to do this all in one class, but not possible to
 # define a field with a factory default that uses a class method as it's
@@ -314,3 +329,10 @@ class Survivor(BaseSurvivor):
     def mutate_network(self) -> None:
         """Mutate network *IN-PLACE*."""
         self.network = self.network.mutate()
+
+    @classmethod
+    def from_bytes(cls, payload: bytes) -> Self:
+        """Return instance from json payload."""
+        data = orjson.loads(payload)
+        data["network"] = ActionNetwork.from_dict(data["network"])
+        return cls(**data)
