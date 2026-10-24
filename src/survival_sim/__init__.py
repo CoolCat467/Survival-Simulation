@@ -32,16 +32,14 @@ from survival_sim.survivor import Survivor
 
 def run() -> None:
     """Run program."""
-    s1 = Survivor()
-    s2 = Survivor()
-    s1.name = "Alice"
-    s2.name = "Bob"
-    s = [s1, s2]
+    s1 = Survivor("Alice")
+    s2 = Survivor("Bob")
+    survivors = [s1, s2]
     for _t in range(200):
-        for person in s:
-            if person.alive:
-                person.advanceTime()
-                person.printToConsole()
+        for survivor in survivors:
+            if survivor.alive:
+                survivor.advance_time()
+                survivor.print_information()
 
     genetic_test()
 

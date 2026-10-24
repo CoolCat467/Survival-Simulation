@@ -63,29 +63,31 @@ class Node(Generic[Number]):
 
 
 class InputNode:
-    def __init__(self, n: str) -> None:
+    def __init__(self, name: str, value: int = 0) -> None:
+        self.name = name
+        self.value = value
+
         # list of nodes
         self.outputs: list[OutputNode] = []
         # list of weights
         self.weights: list[int] = []
-        self.value = 0
-        self.name = n
 
-    def setValue(self, v: int) -> None:
+    def set_value(self, v: int) -> None:
         self.value = v
 
-    def getValue(self) -> int:
+    def get_value(self) -> int:
         return self.value
 
 
 class OutputNode:
-    def __init__(self, n: str) -> None:
+    def __init__(self, name: str, value: int = 0) -> None:
+        self.name = name
+        self.value = value
+
         self.inputs: list[InputNode] = []
         self.weights: list[int] = []
-        self.value = 0
-        self.name = n
 
-    def getValue(self) -> int:
+    def get_value(self) -> int:
         return self.value
 
 

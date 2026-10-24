@@ -26,7 +26,7 @@ __license__ = "GNU General Public License Version 3"
 
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic
+from typing import TYPE_CHECKING, Generic, cast
 
 from survival_sim.nodes import InputNode, Node, Number, OutputNode
 
@@ -41,41 +41,33 @@ class OldNetwork:
         self.setup_network()
 
     def setup_network(self) -> None:
-        tNode = InputNode("thirst")
-        hNode = InputNode("hunger")
-        eNode = InputNode("energy")
-        sNode = InputNode("shelter")
-        fNode = InputNode("food stash")
-        wNode = InputNode("water stash")
-        drinkNode = OutputNode("drink")
-        eatNode = OutputNode("eat")
-        sleepNode = OutputNode("sleep")
-        shelterNode = OutputNode("make shelter")
-        nothingNode = OutputNode("relax")
-        huntNode = OutputNode("hunt")
-        scavengeNode = OutputNode("scavenge")
-        findWaterNode = OutputNode("find water")
-        self.inputNodes = [tNode, hNode, eNode, sNode, fNode, wNode]
-        self.outputNodes = [
-            drinkNode,
-            eatNode,
-            sleepNode,
-            shelterNode,
-            huntNode,
-            scavengeNode,
-            findWaterNode,
-            nothingNode,
+        self.input_nodes = [
+            InputNode("thirst"),
+            InputNode("hunger"),
+            InputNode("energy"),
+            InputNode("shelter"),
+            InputNode("food stash"),
+            InputNode("water stash"),
         ]
-        for i in self.inputNodes:
-            i.value = random.randint(0, 100)
-            for o in self.outputNodes:
+        self.output_nodes = [
+            OutputNode("drink"),
+            OutputNode("eat"),
+            OutputNode("sleep"),
+            OutputNode("make shelter"),
+            OutputNode("hunt"),
+            OutputNode("scavenge"),
+            OutputNode("find water"),
+            OutputNode("relax"),
+        ]
+        for i in self.input_nodes:
+            for o in self.output_nodes:
                 i.outputs.append(o)
                 o.inputs.append(i)
-                w = random.randint(-10, 10)
+                w = random.randint(-10, 10)  # noqa: S311
                 i.weights.append(w)
                 o.weights.append(w)
 
-    def assignInputs(
+    def assign_inputs(
         self,
         thirst: int = 0,
         hunger: int = 0,
@@ -84,73 +76,81 @@ class OldNetwork:
         food: int = 0,
         water: int = 0,
     ) -> None:
-        self.inputNodes[0].value = thirst
-        self.inputNodes[1].value = hunger
-        self.inputNodes[2].value = energy
-        self.inputNodes[3].value = shelter
-        self.inputNodes[4].value = food
-        self.inputNodes[5].value = water
+        self.input_nodes[0].value = thirst
+        self.input_nodes[1].value = hunger
+        self.input_nodes[2].value = energy
+        self.input_nodes[3].value = shelter
+        self.input_nodes[4].value = food
+        self.input_nodes[5].value = water
 
-    def printToConsole(self) -> None:
-        # for i in self.inputNodes:
-        # print(f"{i.name} node\n\tValue:{i.getValue()}\n\tConnections:")
+    def print_information(self) -> None:
+        # for i in self.input_nodes:
+        # print(f"{i.name} node\n\tValue:{i.get_value()}\n\tConnections:")
         # for index in range (len(i.outputs)):
         # print(f"\t\t{i.outputs[index].name}: {i.weights[index]}")
-        for i in self.outputNodes:
-            print(f"{i.name} node\n\tValue:{i.getValue()}\n\tConnections:")
+        for i in self.output_nodes:
+            print(f"{i.name} node\n\tValue:{i.get_value()}\n\tConnections:")
             for index in range(len(i.inputs)):
                 print(f"\t\t{i.inputs[index].name}: {i.weights[index]}")
 
     def propagate(self) -> None:
-        for node in self.outputNodes:
+        for node in self.output_nodes:
             node.value = 0
             for index in range(len(node.inputs)):
                 node.value += (
-                    node.inputs[index].getValue() * node.weights[index]
+                    node.inputs[index].get_value() * node.weights[index]
                 )
             # print(f"{node.name} now has a value of {node.value}")
 
-    def getAction(self) -> str:
-        highestValue = float("-inf")
-        action = ""
-        for OutputNode in self.outputNodes:
-            if OutputNode.getValue() > highestValue:
-                highestValue = OutputNode.getValue()
-                action = OutputNode.name
-        return action
+    def get_action(self) -> str:
+        action_node = max(
+            self.output_nodes,
+            key=lambda node: node.get_value(),
+        )
+        return action_node.name
 
-    def copyNetwork(self) -> Self:
-        newNetwork = self.__class__()
-        for i in range(len(newNetwork.inputNodes)):
-            for j in range(len(newNetwork.inputNodes[i].weights)):
-                newNetwork.inputNodes[i].weights[j] = self.inputNodes[
+    def copy(self) -> Self:
+        new_network = self.__class__()
+        for i in range(len(new_network.input_nodes)):
+            for j in range(len(new_network.input_nodes[i].weights)):
+                new_network.input_nodes[i].weights[j] = self.input_nodes[
                     i
                 ].weights[j]
-        for i in range(len(newNetwork.outputNodes)):
-            for j in range(len(newNetwork.outputNodes[i].weights)):
-                newNetwork.outputNodes[i].weights[j] = self.outputNodes[
+        for i in range(len(new_network.output_nodes)):
+            for j in range(len(new_network.output_nodes[i].weights)):
+                new_network.output_nodes[i].weights[j] = self.output_nodes[
                     i
                 ].weights[j]
-        return newNetwork
+        return new_network
 
     def mutate(self) -> None:
-        pass
+        for node in self.output_nodes:
+            for index in range(len(node.weights)):
+                x = random.randint(1, 10)  # noqa: S311
+                if x == 1 or x == 2:
+                    # print(f"MUTATION! {best_survivor.name} changed {node.name} from {node.weights[index]} to ", end='')
+                    node.weights[index] += 5
+                    # print(node.weights[index])
+                elif x == 3 or x == 4:
+                    # print(f"MUTATION! {best_survivor.name} changed {node.name} from {node.weights[index]} to ", end='')
+                    node.weights[index] -= 5
+                    # print(node.weights[index])
 
-    def getHash(self) -> None:
-        for i in range(len(self.inputNodes)):
-            for _j in range(len(self.inputNodes[i].weights)):
+    def get_hash(self) -> None:
+        for i in range(len(self.input_nodes)):
+            for _j in range(len(self.input_nodes[i].weights)):
                 pass
 
 
 def test_old() -> None:
     n = OldNetwork()
     # n.propagate()
-    n.printToConsole()
+    n.print_information()
     o = OldNetwork()
-    o.printToConsole()
+    o.print_information()
     print("\n\n\n")
-    p = o.copyNetwork()
-    p.printToConsole()
+    p = o.copy()
+    p.print_information()
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,7 +182,7 @@ class ActionNetwork(Network[Number], Generic[Number]):
         for _action_name in action_names:
             weights = []
             for _input_name in input_names:
-                weights.append(random.randint(-100, 100))
+                weights.append(random.randint(-100, 100))  # noqa: S311
             node = Node(weights)
             output_layer.append(node)
         layers.append(output_layer)
@@ -193,9 +193,10 @@ class ActionNetwork(Network[Number], Generic[Number]):
         cls,
         input_names: Sequence[str],
         action_names: Sequence[str],
-    ) -> Self[int]:
+    ) -> ActionNetwork[int]:
         """Initialize action network."""
-        return cls(
+        class_init = cast("type[ActionNetwork[int]]", cls)  # type: ignore[redundant-cast]
+        return class_init(
             cls.setup_network(input_names, action_names),
             tuple(input_names),
             tuple(action_names),
@@ -251,7 +252,8 @@ def test() -> None:
     network = ActionNetwork.new_network(input_fields, actions)
     print(f"{network = }")
     input_values = {
-        field_name: random.randint(0, 100) for field_name in input_fields
+        field_name: random.randint(0, 100)  # noqa: S311
+        for field_name in input_fields
     }
     print(f"{input_values = }")
     print(f"{network.get_action_values(input_values) = }")
@@ -260,4 +262,3 @@ def test() -> None:
 
 if __name__ == "__main__":
     test()
-# types: syntax error: Expected dedent, found end of file

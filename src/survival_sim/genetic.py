@@ -25,95 +25,84 @@ __author__ = "Nathan Roth & CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
 
-import random
+from typing import TYPE_CHECKING
 
 from survival_sim.survivor import Survivor
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
-def pickBest(people: list, fraction):
-    sortedList = sorted(
-        people,
-        key=lambda person: person.calculateFitness(),
+
+def clone_best(survivors: list[Survivor], fraction: int) -> list[Survivor]:
+    fitness_sorted = sorted(
+        survivors,
+        key=lambda survivor: survivor.calculate_fitness(),
         reverse=True,
     )
-    returnList = []
-    for i in range(len(sortedList) // fraction):
+    new_survivors = []
+    for parent in fitness_sorted[: len(fitness_sorted) // fraction]:
         for _j in range(fraction):
-            copyPerson = sortedList[i]
-            child = Survivor()
-            child.name = copyPerson.name
-            child.network = copyPerson.cloneNetwork()
-            returnList.append(child)
-    return returnList
+            child = Survivor(
+                name=parent.name,
+                network=parent.clone_network(),
+            )
+            new_survivors.append(child)
+    return new_survivors
 
 
 # INEFFICIENT...JUST USE PICK BEST
-def generateNewPopulation(people):
-    return pickBest(people, 2)
+def generate_new_population(survivors: list[Survivor]) -> list[Survivor]:
+    return clone_best(survivors, 2)
 
 
-def survivalTrial(people, maxTime):
-    for _t in range(maxTime):
-        for person in people:
-            if person.alive:
-                person.advanceTime()
+def simulate_survival_trial(survivors: list[Survivor], max_time: int) -> None:
+    for _t in range(max_time):
+        for survivor in survivors:
+            if survivor.alive:
+                survivor.advance_time()
 
 
-def mutate(p: Survivor):
-    for node in p.network.outputNodes:
-        for index in range(len(node.weights)):
-            x = random.randint(1, 10)
-            if x == 1 or x == 2:
-                # print(f"MUTATION! {p.name} changed {node.name} from {node.weights[index]} to ", end='')
-                node.weights[index] += 5
-                # print(node.weights[index])
-            elif x == 3 or x == 4:
-                # print(f"MUTATION! {p.name} changed {node.name} from {node.weights[index]} to ", end='')
-                node.weights[index] -= 5
-                # print(node.weights[index])
+def mutate(survivor: Survivor) -> None:
+    survivor.network.mutate()
 
 
-def initializePopulation():
-    numPeople = 100
-    people = []
-    for i in range(numPeople):
-        s = Survivor()
-        s.name = "Subject " + str(i)
-        people.append(s)
-    return people
+def initialize_population(count: int = 100) -> list[Survivor]:
+    return [Survivor(name=f"survivor {i}") for i in range(count)]
 
 
-def printCurrentResults(people):
-    for p in people:
+def print_population_results(survivors: list[Survivor]) -> None:
+    for best_survivor in survivors:
         print(
-            f"{p.name}: {p.calculateFitness()} - alive for {p.age} and current health of {p.health}",
+            f"{best_survivor.name}: {best_survivor.calculate_fitness()} - alive for {best_survivor.age} and current health of {best_survivor.health}",
         )
 
 
-def printCurrentBest(people, num):
-    tempList = sorted(
-        people,
-        key=lambda person: person.calculateFitness(),
+def print_top_best(survivors: list[Survivor], num: int) -> None:
+    fitness_sorted = sorted(
+        survivors,
+        key=lambda survivor: survivor.calculate_fitness(),
         reverse=True,
     )
-    for p in range(num):
+    for survivor in fitness_sorted[:num]:
         print(
-            f"{tempList[p].name}: {tempList[p].calculateFitness()} - alive for {tempList[p].age} and current health of {tempList[p].health}",
+            f"{survivor.name}: {survivor.calculate_fitness()} - alive for {survivor.age} and current health of {survivor.health}",
         )
 
 
-def getCurrentHigh(people):
+def get_best_fitness(survivors: Iterable[Survivor]) -> tuple[int, Survivor]:
     high = 0
-    person = None
-    for p in people:
-        if p.calculateFitness() > high:
-            high = p.calculateFitness()
-            person = p
-    return high, person
+    survivor = None
+    for best_survivor in survivors:
+        if best_survivor.calculate_fitness() > high:
+            high = best_survivor.calculate_fitness()
+            survivor = best_survivor
+    if survivor is None:
+        raise ValueError("Must have survivors to iterate over")
+    return high, survivor
 
 
-def geneticAlgorithm():
-    maxGenerations = 1000
+def genetic_algorithm(generations: int = 1000) -> Survivor:
+
     # randomly initialize population
     # determine fitness of population
     # repeat
@@ -123,39 +112,43 @@ def geneticAlgorithm():
     # calculate fitness on new population
 
     # randomly initialize population
-    survivorList = initializePopulation()
-    highScore = 0
-    for generation in range(maxGenerations):
+    survivors = initialize_population()
+    high_score = 0
+    for generation in range(generations):
         # print(f"**********\nGENERATION {generation}\n**********\n")
-        survivalTrial(survivorList, 200)
-        # printCurrentResults(survivorList)
-        # printCurrentBest(survivorList, 3)
-        h, p = getCurrentHigh(survivorList)
+        simulate_survival_trial(survivors, 200)
+        # print_population_results(survivors)
+        # print_top_best(survivors, 3)
+        best_fitness, best_survivor = get_best_fitness(survivors)
 
-        if h > highScore:
-            print(f"New high value of {h} in generation {generation}")
-            highScore = h
+        if best_fitness > high_score:
+            print(
+                f"New high value of {best_fitness} in generation {generation}",
+            )
+            high_score = best_fitness
+            print()
+            print(f"{best_survivor.network = }")
+            print()
         else:
             pass
-            # print(f"Current high: {getCurrentHigh(survivorList)[0]}, generation: {generation}")
-        survivorList = generateNewPopulation(survivorList)
-        for person in survivorList:
-            mutate(person)
-    return p
+            # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
+        survivors = generate_new_population(survivors)
+        for survivor in survivors:
+            mutate(survivor)
+    return best_survivor
 
 
 def test() -> None:
-    stud = geneticAlgorithm()
+    stud = genetic_algorithm()
+    print(f"{stud = }")
 
-    subject = Survivor()
-    subject.name = stud.name
-    subject.network = stud.cloneNetwork()
+    survivor = Survivor(name=stud.name, network=stud.clone_network())
     for _t in range(200):
-        if subject.alive:
-            subject.advanceTime(True)
-            subject.printToConsole()
-            # person.advanceTime()
-            # person.printToConsole()
+        if survivor.alive:
+            survivor.advance_time(True)
+            survivor.print_information()
+            # survivor.advanceTime()
+            # survivor.print_information()
 
 
 if __name__ == "__main__":

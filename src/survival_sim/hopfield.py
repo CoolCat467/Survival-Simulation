@@ -28,38 +28,49 @@ import random
 
 
 class Node:
-    def __init__(self, i):
-        self.value = 0
-        self.neighbors = []
-        self.weights = []
-        self.id = i
+    def __init__(self, id_: str) -> None:
+        self.value = 0.0
+        self.neighbors: list[Node] = []
+        self.weights: list[float] = []
+        self.id = id_
 
-    def addNeighbor(self, n: Node, w: float):
-        self.neighbors.append(n)
-        self.weights.append(w)
+    def add_neighbor(self, node: Node, weight: float) -> None:
+        self.neighbors.append(node)
+        self.weights.append(weight)
 
-    def updateValue(self):
+    def update_value(self) -> None:
         if len(self.neighbors) == len(self.weights):
             self.value = 0
-            for index in range(len(self.neighbors)):
-                self.value += self.neighbors[index].value * self.weights[index]
-            if self.value < 0:
-                self.value = -1
-            else:
-                self.value = 1
+            for weight, neighbor in zip(
+                self.weights,
+                self.neighbors,
+                strict=True,
+            ):
+                self.value += neighbor.value * weight
+            self.value = max(-1, min(1, self.value))
 
 
 class HopfieldNetwork:
-    def __init__(self):
-        self.nodes = []
+    def __init__(self, nodes: list[Node] | None = None) -> None:
+        if nodes is None:
+            self.nodes = []
+        else:
+            self.nodes = nodes
 
-    def addNode(self, n: Node):
+    def add_node(self, n: Node) -> None:
         self.nodes.append(n)
 
-    def createConnection(self, nFrom: Node, nTo: Node, w=random.random()):
-        nTo.addNeighbor(nFrom, w)
+    def create_connection(
+        self,
+        from_node: Node,
+        to_node: Node,
+        weight: float | None = None,
+    ) -> None:
+        if weight is None:
+            weight = random.random()  # noqa: S311
+        to_node.add_neighbor(from_node, weight)
 
-    def printToConsole(self):
+    def print_information(self) -> None:
         for n in self.nodes:
             print(f"Node {n.id}-current value: {n.value}, connected to...")
             for index in range(len(n.weights)):
@@ -68,34 +79,34 @@ class HopfieldNetwork:
                 )
 
 
-def main():
-    h = HopfieldNetwork()
+def main() -> None:
+    hopfield = HopfieldNetwork()
     n1 = Node("a")
     n2 = Node("b")
     n3 = Node("c")
-    h.addNode(n1)
-    h.addNode(n2)
-    h.addNode(n3)
-    n1.addNeighbor(n2, 0.5)
-    n2.addNeighbor(n3, 1.9)
-    n3.addNeighbor(n1, 2.2)
-    n1.addNeighbor(n3, -0.8)
-    n2.addNeighbor(n1, 1.2)
-    n3.addNeighbor(n2, 0.2)
+    hopfield.add_node(n1)
+    hopfield.add_node(n2)
+    hopfield.add_node(n3)
+    n1.add_neighbor(n2, 0.5)
+    n2.add_neighbor(n3, 1.9)
+    n3.add_neighbor(n1, 2.2)
+    n1.add_neighbor(n3, -0.8)
+    n2.add_neighbor(n1, 1.2)
+    n3.add_neighbor(n2, 0.2)
 
     n1.value = 1
     n2.value = -1
     n3.value = -1
-    h.printToConsole()
-    print("hi")
+    hopfield.print_information()
 
     for i in range(400):
         print(f"\n\n*******\nIteration {i}\n*******")
-        x = random.randint(0, 2)
-        print("UPDATING NODE " + str(h.nodes[x].id))
-        myNode = h.nodes[x]
-        myNode.updateValue()
-        h.printToConsole()
+        x = random.randint(0, 2)  # noqa: S311
+        node = hopfield.nodes[x]
+        print(f"UPDATING NODE {node.id}")
+
+        node.update_value()
+        hopfield.print_information()
 
 
 if __name__ == "__main__":
