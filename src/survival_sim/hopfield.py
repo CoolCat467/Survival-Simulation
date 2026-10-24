@@ -25,39 +25,43 @@ __author__ = "Nathan Roth & CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
 import random
+from dataclasses import dataclass, field
+
+from survival_sim.nodes import sumprod
 
 
+@dataclass(slots=True)
 class Node:
-    def __init__(self, id_: str) -> None:
-        self.value = 0.0
-        self.neighbors: list[Node] = []
-        self.weights: list[float] = []
-        self.id = id_
+    """Node class."""
+
+    id_: str
+    value: float = 0.0
+    neighbors: list[Node] = field(default_factory=list)
+    weights: list[float] = field(default_factory=list)
 
     def add_neighbor(self, node: Node, weight: float) -> None:
+        """Add neighbor node."""
         self.neighbors.append(node)
         self.weights.append(weight)
 
     def update_value(self) -> None:
+        """Update value."""
         if len(self.neighbors) == len(self.weights):
-            self.value = 0
-            for weight, neighbor in zip(
+            self.value = sumprod(
+                (neighbor.value for neighbor in self.neighbors),
                 self.weights,
-                self.neighbors,
-                strict=True,
-            ):
-                self.value += neighbor.value * weight
-            self.value = max(-1, min(1, self.value))
+            )
+        self.value = max(-1, min(1, self.value))
 
 
+@dataclass(slots=True)
 class HopfieldNetwork:
-    def __init__(self, nodes: list[Node] | None = None) -> None:
-        if nodes is None:
-            self.nodes = []
-        else:
-            self.nodes = nodes
+    """Hopfield network."""
+
+    nodes: list[Node] = field(default_factory=list)
 
     def add_node(self, n: Node) -> None:
+        """Add a new node to the network."""
         self.nodes.append(n)
 
     def create_connection(
@@ -66,20 +70,23 @@ class HopfieldNetwork:
         to_node: Node,
         weight: float | None = None,
     ) -> None:
+        """Create a new connection from node to given node with given weight."""
         if weight is None:
             weight = random.random()  # noqa: S311
         to_node.add_neighbor(from_node, weight)
 
     def print_information(self) -> None:
+        """Print information about nodes."""
         for n in self.nodes:
-            print(f"Node {n.id}-current value: {n.value}, connected to...")
+            print(f"Node {n.id_}-current value: {n.value}, connected to...")
             for index in range(len(n.weights)):
                 print(
-                    f"Neighbor: {n.neighbors[index].id} - Weight: {n.weights[index]}",
+                    f"Neighbor: {n.neighbors[index].id_} - Weight: {n.weights[index]}",
                 )
 
 
 def main() -> None:
+    """Run hopfield simulation."""
     hopfield = HopfieldNetwork()
     n1 = Node("a")
     n2 = Node("b")
@@ -103,7 +110,7 @@ def main() -> None:
         print(f"\n\n*******\nIteration {i}\n*******")
         x = random.randint(0, 2)  # noqa: S311
         node = hopfield.nodes[x]
-        print(f"UPDATING NODE {node.id}")
+        print(f"UPDATING NODE {node.id_}")
 
         node.update_value()
         hopfield.print_information()
