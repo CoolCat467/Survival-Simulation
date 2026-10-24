@@ -87,7 +87,7 @@ Returns False if could not perform action because of not enough {cost_attrs_info
 Return True if successful."""
 
         # Remember which attributes are required for printing later
-        wrapper.cost_attrs_info = cost_attrs_info
+        wrapper.cost_attrs_info = cost_attrs_info  # type: ignore[attr-defined]
 
         return wrapper
 

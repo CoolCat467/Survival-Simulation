@@ -81,8 +81,8 @@ def simulate_survival_trial(
 
 
 def mutate(survivor: Survivor) -> None:
-    """Potentially mutate a survivor *IN-PLACE*."""
-    survivor.mutate()
+    """Potentially mutate a survivor's network *IN-PLACE*."""
+    survivor.mutate_network()
 
 
 def initialize_population(count: int = 100) -> list[Survivor]:
