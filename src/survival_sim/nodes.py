@@ -68,34 +68,34 @@ class Node(Generic[Number]):
 
 
 @dataclass(slots=True)
-class SharedNode:
+class SharedNode(Generic[Number]):
     """Shared node class."""
 
     name: str
-    value: int = 0
-    weights: list[int] = field(default_factory=list)
+    value: Number = 0
+    weights: list[Number] = field(default_factory=list)
 
-    def set_value(self, v: int) -> None:
+    def set_value(self, v: Number) -> None:
         """Set value."""
         self.value = v
 
-    def get_value(self) -> int:
+    def get_value(self) -> Number:
         """Return value."""
         return self.value
 
 
 @dataclass(slots=True)
-class InputNode(SharedNode):
+class InputNode(SharedNode[Number], Generic[Number]):
     """Input node."""
 
-    outputs: list[OutputNode] = field(default_factory=list)
+    outputs: list[OutputNode[Number]] = field(default_factory=list)
 
 
 @dataclass(slots=True)
-class OutputNode(SharedNode):
+class OutputNode(SharedNode[Number], Generic[Number]):
     """Output node."""
 
-    inputs: list[InputNode] = field(default_factory=list)
+    inputs: list[InputNode[Number]] = field(default_factory=list)
 
 
 def test() -> None:

@@ -31,7 +31,7 @@ from survival_sim.nodes import SharedNode, sumprod
 
 
 @dataclass(slots=True)
-class Node(SharedNode):
+class Node(SharedNode[float]):
     """Node class."""
 
     neighbors: list[Node] = field(default_factory=list)
