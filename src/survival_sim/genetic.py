@@ -85,9 +85,15 @@ def mutate(survivor: Survivor) -> None:
     survivor.mutate_network()
 
 
-def initialize_population(count: int = 100) -> list[Survivor]:
+def initialize_population(count: int, hidden_layers: int) -> list[Survivor]:
     """Return a population of new survivors."""
-    return [Survivor(name=f"survivor {i}") for i in range(count)]
+    return [
+        Survivor(
+            f"survivor {i}",
+            network=Survivor.create_network(hidden_layers),
+        )
+        for i in range(count)
+    ]
 
 
 def print_population_results(survivors: list[Survivor]) -> None:
@@ -127,6 +133,7 @@ def genetic_algorithm(
     population_size: int = 100,
     max_simulation_iterations: int = 200,
     cull_fraction: int = 2,
+    hidden_layers: int = 1,
 ) -> Survivor:
     """Return the survivor with the best fitness after given number of generations."""
     # randomly initialize population
@@ -138,7 +145,7 @@ def genetic_algorithm(
     # calculate fitness on new population
 
     # randomly initialize population
-    survivors = initialize_population(population_size)
+    survivors = initialize_population(population_size, hidden_layers)
     high_score = 0
     last_print_generation = 0
     try:
