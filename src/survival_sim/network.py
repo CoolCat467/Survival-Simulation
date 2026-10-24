@@ -272,6 +272,10 @@ class Network(Generic[Number]):
             layer_input_count = current_layer_node_count
         return layers
 
+    def serialize(self) -> bytes:
+        """Return json payload from instance."""
+        return orjson.dumps(self)
+
     @staticmethod
     def deserialize_layers(
         layer_data: list[list[dict[str, list[Number]]]],

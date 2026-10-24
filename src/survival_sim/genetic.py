@@ -25,8 +25,11 @@ __author__ = "Nathan Roth & CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
 
+from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from survival_sim.network import ActionNetwork
 from survival_sim.survivor import Survivor
 
 if TYPE_CHECKING:
@@ -37,7 +40,7 @@ def clone_best(survivors: list[Survivor], fraction: int) -> list[Survivor]:
     """Return a clone of the top 1/fraction survivors and cull everything below."""
     fitness_sorted = sorted(
         survivors,
-        key=lambda survivor: survivor.calculate_fitness(),
+        key=Survivor.calculate_fitness,
         reverse=True,
     )
     new_survivors = []
@@ -143,14 +146,12 @@ def get_best_fitness(survivors: Iterable[Survivor]) -> tuple[int, Survivor]:
 
 
 def genetic_algorithm(
+    initial_population: list[Survivor],
     generations: int,
-    population_size: int = 100,
     max_simulation_iterations: int | None = None,
     cull_fraction: int = 2,
-    hidden_layers: int = 1,
 ) -> Survivor:
     """Return the survivor with the best fitness after given number of generations."""
-    # randomly initialize population
     # determine fitness of population
     # repeat
     # select parents from population
@@ -158,8 +159,7 @@ def genetic_algorithm(
     # perform mutation on new population
     # calculate fitness on new population
 
-    # randomly initialize population
-    survivors = initialize_population(population_size, hidden_layers)
+    survivors = initial_population
     high_score = 0
     last_print_generation = 0
     try:
@@ -175,9 +175,9 @@ def genetic_algorithm(
                     f"New high value of {best_fitness} in generation {generation}",
                 )
                 high_score = best_fitness
-                print()
-                print(f"{survivor.network = }")
-                print()
+                ##                print()
+                ##                print(f"{survivor.network = }")
+                ##                print()
                 last_print_generation = generation
             elif (
                 generation - last_print_generation >= 5 and not generation % 5
@@ -193,15 +193,112 @@ def genetic_algorithm(
     return survivor
 
 
+def current_iso_timestamp() -> str:
+    """Return current ISO timestamp up to seconds."""
+    return datetime.today().isoformat(timespec="seconds")
+
+
+def save_survivor(saved_survivors_folder: Path, survivor: Survivor) -> None:
+    """Save given survivor to file."""
+    default_name = current_iso_timestamp().replace(":", "-")
+    name = input(f"Enter custom name (default {default_name!r} if blank): ")
+    if not name:
+        name = default_name
+    filename = f"{name}.json"
+    if not saved_survivors_folder.exists():
+        saved_survivors_folder.mkdir()
+
+    filepath = saved_survivors_folder / filename
+    filepath.write_bytes(survivor.serialize() + b"\n")
+    print(f"Saved survivor as {str(filepath)!r}")
+
+
+def load_network(network_filepath: Path) -> ActionNetwork[int]:
+    """Return network loaded from given filepath."""
+    return ActionNetwork[int].from_bytes(network_filepath.read_bytes())
+
+
+def load_survivor(survivor_filepath: Path) -> Survivor:
+    """Return network loaded from given filepath."""
+    return Survivor.from_bytes(survivor_filepath.read_bytes())
+
+
+def yield_json_files(folder: Path) -> Generator[Path, None, None]:
+    """Yield json files from given folder."""
+    if not folder.exists():
+        return
+    for file in folder.iterdir():
+        if not file.is_file():
+            continue
+        if file.suffix != ".json":
+            continue
+        yield file
+
+
+def load_population(
+    saved_survivors_folder: Path,
+) -> list[Survivor]:
+    """Load all survivors from folder."""
+    survivors = []
+    for index, survivor_filepath in enumerate(
+        yield_json_files(saved_survivors_folder),
+    ):
+        original_survivor = load_survivor(survivor_filepath)
+        survivors.append(
+            Survivor(
+                f"loaded survivor {index}",
+                network=original_survivor.network,
+            ),
+        )
+
+    return survivors
+
+
 def main() -> None:
     """Run genetic algorithm simulation."""
-    best_survivor = genetic_algorithm(2000)
-    print(f"{best_survivor = }")
+    this_file = Path(__file__).absolute()
+    this_folder = this_file.parent
+    saved_survivors_folder = this_folder / "survivor_data"
+
+    population_size = 100
+    hidden_layers = 1
+    iterations = 2000
+
+    load_survivors = False
+    if saved_survivors_folder.exists():
+        load_survivors = (
+            input(
+                "Would you like to load initial survivors instead starting with new random survivors? (Y/n): ",
+            )
+            != "n"
+        )
+
+    if load_survivors:
+        survivors = load_population(saved_survivors_folder)
+        print(f"Loaded {len(survivors)} survivors from files.")
+
+        # Pad missing with new random survivors
+        missing = population_size - len(survivors)
+        survivors.extend(initialize_population(missing, hidden_layers))
+        print(f"Created {missing} new random survivors.\n")
+    else:
+        # randomly initialize population
+        survivors = initialize_population(population_size, hidden_layers)
+
+    input("Press enter to start.\n")
+
+    best_survivor = genetic_algorithm(survivors, iterations)
+    # print(f"{best_survivor = }")
 
     survivor = Survivor(
         best_survivor.name,
         network=best_survivor.clone_network(),
     )
+
+    print()
+    if input("Would you like to save this survivor? (Y/n): ").lower() != "n":
+        save_survivor(saved_survivors_folder, best_survivor)
+
     # for _t in range(200):
     while survivor.alive:
         if survivor.alive:

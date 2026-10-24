@@ -214,9 +214,7 @@ class BaseSurvivor:
         self.energy = max(0, self.energy - 2)
 
         # take damage from poor conditions
-        if self.hunger < 20 or self.thirst < 20:
-            self.health -= 5
-        if self.energy < 20:
+        if self.hunger < 20 or self.thirst < 20 or self.energy < 20:
             self.health -= 1
 
         if not self.alive:
