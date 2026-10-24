@@ -32,40 +32,62 @@ from typing import TYPE_CHECKING, ClassVar
 from survival_sim.network import ActionNetwork
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable, Generator, Iterable
 
 
-def costs_energy(
-    energy_cost: int,
+def combine_end(data: Iterable[str], final: str = "and") -> str:
+    """Join values of text, and have final with the last one properly."""
+    data = list(map(str, data))
+    if len(data) >= 2:
+        data[-1] = f"{final} {data[-1]}"
+    if len(data) > 2:
+        return ", ".join(data)
+    return " ".join(data)
+
+
+def costs(
+    **kwargs: int,
 ) -> Callable[
     [Callable[[BaseSurvivor], None]],
-    Callable[[BaseSurvivor], None],
+    Callable[[BaseSurvivor], bool],
 ]:
-    """Return decorator to prevent an action from working if not enough energy to pay energy cost."""
+    """Return a decorator to require an action to cost an attribute."""
 
     def action_decorator(
         action_function: Callable[[BaseSurvivor], None],
     ) -> Callable[[BaseSurvivor], bool]:
-        """Return wrapped action function that incurs energy cost and won't run if not enough energy."""
+        """Return wrapped action function that incurs an attribute and won't run if not enough of an attribute."""
 
         @wraps(action_function)
         def wrapper(self: BaseSurvivor) -> bool:
-            """Return if successfully performed wrapped action function."""
-            if not self.can_perform_action(energy_cost):
+            """Return True if wrapped action function incurred cost and ran."""
+            if not self.can_perform_action(kwargs):
                 # not successful
                 return False
-            self.energy -= energy_cost
+            self.incur_attribute_costs(kwargs)
 
             # Perform original action
             action_function(self)
 
             return True
 
-        if wrapper.__doc__:
+        # Add documentation about new attribute costs.
+        if not wrapper.__doc__:
+            wrapper.__doc__ = ""
+        else:
             wrapper.__doc__ += " "
-        wrapper.__doc__ += f"""Costs {energy_cost} energy.
+        cost_info = combine_end(
+            f"{count} {attr}" for attr, count in kwargs.items()
+        )
+        cost_attrs_info = combine_end(kwargs, "or")
 
-Returns False if could not perform action because of not enough energy, True if successful."""
+        wrapper.__doc__ += f"""Costs {cost_info}.
+
+Returns False if could not perform action because of not enough {cost_attrs_info}.
+Return True if successful."""
+
+        # Remember which attributes are required for printing later
+        wrapper.cost_attrs_info = cost_attrs_info
 
         return wrapper
 
@@ -74,6 +96,8 @@ Returns False if could not perform action because of not enough energy, True if 
 
 @dataclasses.dataclass(slots=True)
 class BaseSurvivor:
+    """Base survivor class without a brain."""
+
     MAX_HEALTH: ClassVar = 100
     MAX_HUNGER: ClassVar = 100
     MAX_THIRST: ClassVar = 100
@@ -95,25 +119,32 @@ class BaseSurvivor:
         """Return if health is greater than zero."""
         return self.health > 0
 
-    def can_perform_action(self, energy_cost: int) -> bool:
-        """Return if able to perform an action that costs a given amount of energy."""
-        return self.energy >= energy_cost
+    def can_perform_action(self, costs: dict[str, int]) -> bool:
+        """Return if able to perform an action that costs a given amount of an attribute."""
+        for attribute, cost in costs.items():
+            if getattr(self, attribute) < cost:
+                return False
+        return True
 
+    def incur_attribute_costs(self, costs: dict[str, int]) -> None:
+        """Incur given attribute costs."""
+        billable_attributes = set(BaseSurvivor.yield_input_fields())
+        for attribute, cost in costs.items():
+            assert attribute in billable_attributes, attribute
+            new_value = getattr(self, attribute) - cost
+            setattr(self, attribute, new_value)
+
+    @costs(food_stash=1)
     def action_eat(self) -> None:
         """Perform eat action."""
-        if self.food_stash <= 0:
-            return
-        self.food_stash -= 1
         if self.hunger < 90:
             self.hunger += 10
         if self.hunger > 80 and self.health < 95:
             self.health += 2
 
+    @costs(water_stash=1)
     def action_drink(self) -> None:
         """Perform drink action."""
-        if self.water_stash <= 0:
-            return
-        self.water_stash -= 1
         if self.thirst < 92:
             self.thirst += 8
         if self.thirst > 80 and self.health < 95:
@@ -123,7 +154,7 @@ class BaseSurvivor:
         """Perform sleep action."""
         self.energy = min(self.MAX_ENERGY, self.energy + 10)
 
-    @costs_energy(5)
+    @costs(energy=5)
     def action_make_shelter(self) -> None:
         """Perform make shelter action."""
         if self.shelter < 40:
@@ -135,21 +166,21 @@ class BaseSurvivor:
             # self.shelter -= 5
             self.shelter += 5
 
-    @costs_energy(3)
+    @costs(energy=3)
     def action_scavenge(self) -> None:
         """Perform scavenge action."""
         chance = random.randint(1, 6)  # noqa: S311
         if chance < 5:
             self.food_stash += 1
 
-    @costs_energy(8)
+    @costs(energy=8)
     def action_hunt(self) -> None:
         """Perform hunt action."""
         chance = random.randint(1, 6)  # noqa: S311
         if chance < 3:
             self.food_stash += 3
 
-    @costs_energy(2)
+    @costs(energy=2)
     def action_find_water(self) -> None:
         """Perform find water action."""
         chance = random.randint(1, 6)  # noqa: S311
@@ -160,7 +191,7 @@ class BaseSurvivor:
 
     def decide_action(self) -> str:
         """Return an action to perform."""
-        return "rest"
+        return "relax"
 
     def advance_time(self, printing: bool = False) -> None:
         """Advance time and perform an action."""
@@ -188,16 +219,18 @@ class BaseSurvivor:
             return
 
         action = self.decide_action()
-        success = self.perform_action(action)
+        success, cost_attr_info = self.perform_action(action)
         if printing:
             if success:
                 print(f"{self.name} just did the {action} action")
             else:
+                if cost_attr_info is None:
+                    cost_attr_info = "of an unknown attribute"
                 print(
-                    f"{self.name} wanted to do the {action} action but was too tired",
+                    f"{self.name} wanted to do the {action} action but didn't have enough {cost_attr_info}",
                 )
 
-    def perform_action(self, action: str) -> bool:
+    def perform_action(self, action: str) -> tuple[bool, str | None]:
         """Perform the given action. Return if successful.
 
         Not successful if energy was too low.
@@ -208,8 +241,13 @@ class BaseSurvivor:
             assert callable(perform_action_function)
             result = perform_action_function()
             if result is not None:
-                return bool(result)
-        return True
+                cost_attrs_info = getattr(
+                    perform_action_function,
+                    "cost_attrs_info",
+                    None,
+                )
+                return bool(result), cost_attrs_info
+        return True, None
 
     def calculate_fitness(self) -> int:
         """Return fitness."""
@@ -260,13 +298,19 @@ class BaseSurvivor:
 
 @dataclasses.dataclass(slots=True)
 class Survivor(BaseSurvivor):
+    """Survivor class with a brain."""
+
     network: ActionNetwork[int] = dataclasses.field(
         default_factory=BaseSurvivor.create_network,
     )
 
-    def decide_action(self) -> str:
+    def decide_action(self) -> str:  # noqa: D102
         return self.network.get_action(self.get_inputs())
 
     def clone_network(self) -> ActionNetwork[int]:
         """Return a copy of the network."""
         return self.network.copy()
+
+    def mutate_network(self) -> None:
+        """Mutate network *IN-PLACE*."""
+        self.network = self.network.mutate()
