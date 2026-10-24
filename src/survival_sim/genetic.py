@@ -25,8 +25,11 @@ __author__ = "Nathan Roth & CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
 
+import statistics
+from time import perf_counter
 from typing import TYPE_CHECKING
 
+from survival_sim import elapsed
 from survival_sim.survivor import Survivor
 
 if TYPE_CHECKING:
@@ -141,6 +144,12 @@ def get_best_fitness(survivors: Iterable[Survivor]) -> tuple[int, Survivor]:
     )
 
 
+def estimate_completion(time_deltas: list[float], remaining: int) -> float:
+    """Return estimated wait time until done given time deltas and remaining count."""
+    average_wait = statistics.mean(time_deltas)
+    return average_wait * remaining
+
+
 def genetic_algorithm(
     initial_population: list[Survivor],
     generations: int,
@@ -158,10 +167,12 @@ def genetic_algorithm(
     survivors = initial_population
     high_score = 0
     last_print_generation = 0
+    time_deltas = []
     try:
         for generation in range(generations):
             # print(f"**********\nGENERATION {generation}\n**********\n")
             simulate_survival_trial(survivors, max_simulation_iterations)
+            time_deltas.append(perf_counter())
             # print_population_results(survivors)
             # print_top_best(survivors, 3)
             best_fitness, survivor = get_best_fitness(survivors)
@@ -175,11 +186,14 @@ def genetic_algorithm(
                 ##                print(f"{survivor.network = }")
                 ##                print()
                 last_print_generation = generation
-            elif (
-                generation - last_print_generation >= 5 and not generation % 5
-            ):
+            elif generation - last_print_generation >= 10:
                 last_print_generation = generation
-                print(f"{generation = }")
+                remaining = generations - generation
+                estimated_wait = estimate_completion(time_deltas, remaining)
+                estimated_completion = elapsed.get_elapsed(estimated_wait)
+                print(
+                    f"{generation = } Estimated remaining time {estimated_completion}",
+                )
                 # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
             survivors = generate_new_population(survivors, cull_fraction)
             for survivor in survivors:

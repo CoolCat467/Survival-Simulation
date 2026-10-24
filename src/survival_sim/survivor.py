@@ -31,22 +31,13 @@ from typing import TYPE_CHECKING, ClassVar
 
 import orjson
 
+from survival_sim.elapsed import combine_end
 from survival_sim.network import ActionNetwork
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Iterable
+    from collections.abc import Callable, Generator
 
     from typing_extensions import Self
-
-
-def combine_end(data: Iterable[str], final: str = "and") -> str:
-    """Join values of text, and have final with the last one properly."""
-    data = list(map(str, data))
-    if len(data) >= 2:
-        data[-1] = f"{final} {data[-1]}"
-    if len(data) > 2:
-        return ", ".join(data)
-    return " ".join(data)
 
 
 def costs(
