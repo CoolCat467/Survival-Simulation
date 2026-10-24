@@ -142,9 +142,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--max-simulation-iterations",
-        type=int,
+        type=str,
         default="200",
-        help="Maximum number of simulation iterations per batch. Defaults to 200",
+        help="Maximum number of simulation iterations per batch. Defaults to 200. If `None`, runs until all survivors have died.",
     )
     parser.add_argument(
         "--new-network-hidden-layer-count",
@@ -164,7 +164,9 @@ def main() -> None:
     population_size = int(args.population_size)
     hidden_layers = max(0, int(args.new_network_hidden_layer_count))
     generations = int(args.generations)
-    max_simulation_iterations = int(args.max_simulation_iterations)
+    max_simulation_iterations: int | None = None
+    if args.max_simulation_iterations.lower() != "none":
+        max_simulation_iterations = int(args.max_simulation_iterations)
     cull_fraction = max(1, int(args.cull_fraction))
 
     this_file = Path(__file__).absolute()
