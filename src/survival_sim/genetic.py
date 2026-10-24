@@ -101,7 +101,7 @@ def get_best_fitness(survivors: Iterable[Survivor]) -> tuple[int, Survivor]:
     return high, survivor
 
 
-def genetic_algorithm(generations: int = 1000) -> Survivor:
+def genetic_algorithm(generations: int) -> Survivor:
 
     # randomly initialize population
     # determine fitness of population
@@ -114,6 +114,7 @@ def genetic_algorithm(generations: int = 1000) -> Survivor:
     # randomly initialize population
     survivors = initialize_population()
     high_score = 0
+    last_print_generation = 0
     for generation in range(generations):
         # print(f"**********\nGENERATION {generation}\n**********\n")
         simulate_survival_trial(survivors, 200)
@@ -129,8 +130,10 @@ def genetic_algorithm(generations: int = 1000) -> Survivor:
             print()
             print(f"{best_survivor.network = }")
             print()
-        else:
-            pass
+            last_print_generation = generation
+        elif generation - last_print_generation > 5:
+            last_print_generation = generation
+            print(f"{generation = }")
             # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
         survivors = generate_new_population(survivors)
         for survivor in survivors:
@@ -139,10 +142,13 @@ def genetic_algorithm(generations: int = 1000) -> Survivor:
 
 
 def test() -> None:
-    stud = genetic_algorithm()
-    print(f"{stud = }")
+    best_survivor = genetic_algorithm(120)
+    print(f"{best_survivor = }")
 
-    survivor = Survivor(name=stud.name, network=stud.clone_network())
+    survivor = Survivor(
+        best_survivor.name,
+        network=best_survivor.clone_network(),
+    )
     for _t in range(200):
         if survivor.alive:
             survivor.advance_time(True)

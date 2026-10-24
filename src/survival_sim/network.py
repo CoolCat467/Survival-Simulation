@@ -165,8 +165,19 @@ class Network(Generic[Number]):
             input_ = output
         return output
 
+    def mutate(self) -> None:
+        """Randomly mutate the weights of all nodes in all layers."""
+        for layer in self.layers:
+            for node in layer:
+                for index in range(len(node.weights)):
+                    x = random.randint(1, 10)  # noqa: S311
+                    if x == 1 or x == 2:
+                        node.weights[index] += 5
+                    elif x == 3 or x == 4:
+                        node.weights[index] -= 5
 
-@dataclass(frozen=True, slots=True)
+
+@dataclass(frozen=True, slots=True, repr=True)
 class ActionNetwork(Network[Number], Generic[Number]):
     input_names: tuple[str, ...]
     action_names: tuple[str, ...]
