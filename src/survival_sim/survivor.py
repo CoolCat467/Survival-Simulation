@@ -275,13 +275,13 @@ class BaseSurvivor:
             yield field.name
 
     @classmethod
-    def create_network(cls) -> ActionNetwork:
+    def create_network(cls, hidden_layers: int = 0) -> ActionNetwork[int]:
         """Return a new ActionNetwork with all input fields and actions."""
         input_fields = sorted(cls.yield_input_fields())
         actions = sorted(["relax", *cls.get_action_functions()])
-        return ActionNetwork.new_network(input_fields, actions)
+        return ActionNetwork.new_network(input_fields, actions, hidden_layers)
 
-    def get_inputs(self) -> dict[str, float]:
+    def get_inputs(self) -> dict[str, int]:
         """Return dictionary of network input fields."""
         input_fields = set(self.yield_input_fields())
         return {
@@ -300,14 +300,14 @@ class BaseSurvivor:
 class Survivor(BaseSurvivor):
     """Survivor class with a brain."""
 
-    network: ActionNetwork = dataclasses.field(
+    network: ActionNetwork[int] = dataclasses.field(
         default_factory=BaseSurvivor.create_network,
     )
 
     def decide_action(self) -> str:  # noqa: D102
         return self.network.get_action(self.get_inputs())
 
-    def clone_network(self) -> ActionNetwork:
+    def clone_network(self) -> ActionNetwork[int]:
         """Return a copy of the network."""
         return self.network.copy()
 

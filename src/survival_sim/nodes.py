@@ -28,7 +28,7 @@ __license__ = "GNU General Public License Version 3"
 import math
 import sys
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -36,25 +36,31 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
 
+Number = TypeVar("Number", int, float, default=int)
+
+
 if sys.version_info < (3, 12):
     import operator
 
-    def sumprod(p: Iterable[float], q: Iterable[float]) -> float:
+    def sumprod(p: Iterable[Number], q: Iterable[Number]) -> Number:
         """Return the sum of products of values from two iterables p and q."""
-        return float(sum(map(operator.mul, p, q, strict=True)))
+        return cast("Number", sum(map(operator.mul, p, q, strict=True)))
 else:
-    sumprod = math.sumprod
+
+    def sumprod(p: Iterable[Number], q: Iterable[Number]) -> Number:
+        """Return the sum of products of values from two iterables p and q."""
+        return cast("Number", math.sumprod(p, q))  # type: ignore[redundant-cast]
 
 
 @dataclass(slots=True, frozen=True)
-class Node:
+class Node(Generic[Number]):
     """Node class with partial value calculation from inputs."""
 
-    weights: list[float]
+    weights: list[Number]
 
-    def get_value(self, inputs: Iterable[float]) -> float:
+    def get_value(self, inputs: Iterable[Number]) -> Number:
         """Return value of the sum of input * weight for each pair."""
-        return sumprod(inputs, self.weights)
+        return cast("Number", sumprod(inputs, self.weights))  # type: ignore[redundant-cast]
 
     def copy(self) -> Self:
         """Return a deep copy of this node."""
@@ -66,14 +72,14 @@ class SharedNode:
     """Shared node class."""
 
     name: str
-    value: float = 0.0
-    weights: list[float] = field(default_factory=list)
+    value: int = 0
+    weights: list[int] = field(default_factory=list)
 
-    def set_value(self, v: float) -> None:
+    def set_value(self, v: int) -> None:
         """Set value."""
         self.value = v
 
-    def get_value(self) -> float:
+    def get_value(self) -> int:
         """Return value."""
         return self.value
 

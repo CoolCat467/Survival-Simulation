@@ -26,12 +26,12 @@ __license__ = "GNU General Public License Version 3"
 
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, cast
 
-from survival_sim.nodes import InputNode, Node, OutputNode
+from survival_sim.nodes import InputNode, Node, Number, OutputNode
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable, Sequence
 
     from typing_extensions import Self
 
@@ -75,12 +75,12 @@ class OldNetwork:
 
     def assign_inputs(
         self,
-        thirst: float = 0.0,
-        hunger: float = 0.0,
-        energy: float = 0.0,
-        shelter: float = 0.0,
-        food: float = 0.0,
-        water: float = 0.0,
+        thirst: int = 0,
+        hunger: int = 0,
+        energy: int = 0,
+        shelter: int = 0,
+        food: int = 0,
+        water: int = 0,
     ) -> None:
         """Assign input values to nodes."""
         self.input_nodes[0].value = thirst
@@ -104,7 +104,7 @@ class OldNetwork:
     def propagate(self) -> None:
         """Propagate inputs through the network."""
         for node in self.output_nodes:
-            node.value = 0.0
+            node.value = 0
             for index in range(len(node.inputs)):
                 node.value += (
                     node.inputs[index].get_value() * node.weights[index]
@@ -168,18 +168,20 @@ def test_old() -> None:
 
 
 @dataclass(frozen=True, slots=True)
-class Network:
+class Network(Generic[Number]):
     """Base network with feed forward and mutations."""
 
-    layers: list[list[Node]]
+    layers: list[list[Node[Number]]]
 
-    def feed_forward(self, inputs: list[float]) -> list[float]:
+    def feed_forward(self, inputs: Iterable[Number]) -> list[Number]:
         """Return the output layer after feeding inputs through the network."""
-        input_ = inputs
+        input_: Iterable[Number] | list[Number] = inputs
         for layer in self.layers:
             output = [node.get_value(input_) for node in layer]
             input_ = output
-        return output
+            # print(f'{output = }')
+        assert isinstance(input_, list)
+        return input_
 
     def get_random_mutation_changes(self) -> list[tuple[int, int, int, int]]:
         """Return a random list of (layer, node, weight, weight delta) mutations."""
@@ -208,7 +210,7 @@ class Network:
         for layer_index, node_index, weight_index, delta in mutations:
             self.layers[layer_index][node_index].weights[weight_index] += delta
 
-    def layers_copy(self) -> list[list[Node]]:
+    def layers_copy(self) -> list[list[Node[Number]]]:
         """Return a deep copy of this network's layers."""
         return [[node.copy() for node in layer] for layer in self.layers]
 
@@ -228,54 +230,76 @@ class Network:
         copy.apply_mutations(mutations)
         return copy
 
+    @staticmethod
+    def setup_layers(
+        input_count: int,
+        output_count: int,
+        hidden_layers: int,
+    ) -> list[list[Node[int]]]:
+        """Return a new random simple network layers using action and input names."""
+        layer_count = hidden_layers + 1
+        difference = input_count - output_count
+
+        node_counts = [
+            input_count - (difference * (i + 1) + hidden_layers) // layer_count
+            for i in range(layer_count)
+        ]
+
+        layers = []
+        layer_input_count = input_count
+
+        for current_layer_node_count in node_counts:
+            layer = []
+            for _ in range(current_layer_node_count):
+                weights = [
+                    random.randint(-100, 100)  # noqa: S311
+                    for _ in range(layer_input_count)
+                ]
+
+                layer.append(Node(weights))
+
+            layers.append(layer)
+
+            layer_input_count = current_layer_node_count
+        return layers
+
 
 @dataclass(frozen=True, slots=True, repr=True)
-class ActionNetwork(Network):
+class ActionNetwork(Network[Number], Generic[Number]):
     """Network with named inputs and named action outputs."""
 
     input_names: tuple[str, ...]
     action_names: tuple[str, ...]
-
-    @staticmethod
-    def setup_layers(
-        input_names: Sequence[str],
-        action_names: Sequence[str],
-    ) -> list[list[Node]]:
-        """Return a new random simple network layers using action and input names."""
-        layers = []
-        output_layer = []
-        for _action_name in action_names:
-            weights = []
-            for _input_name in input_names:
-                weights.append(float(random.randint(-100, 100)))  # noqa: S311
-            node = Node(weights)
-            output_layer.append(node)
-        layers.append(output_layer)
-        return layers
 
     @classmethod
     def new_network(
         cls,
         input_names: Sequence[str],
         action_names: Sequence[str],
-    ) -> ActionNetwork:
+        hidden_layers: int = 0,
+    ) -> ActionNetwork[int]:
         """Initialize action network."""
-        return cls(
-            cls.setup_layers(input_names, action_names),
+        class_init = cast("type[ActionNetwork[int]]", cls)  # type: ignore[redundant-cast]
+        return class_init(
+            cls.setup_layers(
+                len(input_names),
+                len(action_names),
+                hidden_layers,
+            ),
             tuple(input_names),
             tuple(action_names),
         )
 
     def get_action_values(
         self,
-        input_values: dict[str, float],
-    ) -> dict[str, float]:
+        input_values: dict[str, Number],
+    ) -> dict[str, Number]:
         """Return a dictionary of action names to values given a dict of input names to values."""
         inputs = [input_values[key] for key in self.input_names]
         output = self.feed_forward(inputs)
         return dict(zip(self.action_names, output, strict=True))
 
-    def get_action(self, input_values: dict[str, float]) -> str:
+    def get_action(self, input_values: dict[str, Number]) -> str:
         """Return the action to perform given a dict of input names to values."""
         action_results = self.get_action_values(input_values)
         action = max(
@@ -313,15 +337,22 @@ def test() -> None:
         "find water",
         "rest",
     )
-    network = ActionNetwork.new_network(input_fields, actions)
-    print(f"{network = }")
+    action_network = ActionNetwork.new_network(input_fields, actions)
+    print(f"{action_network = }")
     input_values = {
-        field_name: float(random.randint(0, 100))  # noqa: S311
+        field_name: random.randint(0, 100)  # noqa: S311
         for field_name in input_fields
     }
     print(f"{input_values = }")
-    print(f"{network.get_action_values(input_values) = }")
-    print(f"{network.get_action(input_values) = }")
+    print(f"{action_network.get_action_values(input_values) = }")
+    print(f"{action_network.get_action(input_values) = }")
+
+    network = Network(Network.setup_layers(8, 4, 3))
+    assert len(network.layers[0]) == 7
+    assert len(network.layers[1]) == 6
+    assert len(network.layers[2]) == 5
+    assert len(network.layers[3]) == 4
+    print(f"{network.feed_forward(range(8)) = }")
 
 
 if __name__ == "__main__":
