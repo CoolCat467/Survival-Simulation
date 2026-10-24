@@ -115,29 +115,32 @@ def genetic_algorithm(generations: int) -> Survivor:
     survivors = initialize_population()
     high_score = 0
     last_print_generation = 0
-    for generation in range(generations):
-        # print(f"**********\nGENERATION {generation}\n**********\n")
-        simulate_survival_trial(survivors, 200)
-        # print_population_results(survivors)
-        # print_top_best(survivors, 3)
-        best_fitness, best_survivor = get_best_fitness(survivors)
+    try:
+        for generation in range(generations):
+            # print(f"**********\nGENERATION {generation}\n**********\n")
+            simulate_survival_trial(survivors, 200)
+            # print_population_results(survivors)
+            # print_top_best(survivors, 3)
+            best_fitness, best_survivor = get_best_fitness(survivors)
 
-        if best_fitness > high_score:
-            print(
-                f"New high value of {best_fitness} in generation {generation}",
-            )
-            high_score = best_fitness
-            print()
-            print(f"{best_survivor.network = }")
-            print()
-            last_print_generation = generation
-        elif generation - last_print_generation > 5:
-            last_print_generation = generation
-            print(f"{generation = }")
-            # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
-        survivors = generate_new_population(survivors)
-        for survivor in survivors:
-            mutate(survivor)
+            if best_fitness > high_score:
+                print(
+                    f"New high value of {best_fitness} in generation {generation}",
+                )
+                high_score = best_fitness
+                print()
+                print(f"{best_survivor.network = }")
+                print()
+                last_print_generation = generation
+            elif generation - last_print_generation > 5:
+                last_print_generation = generation
+                print(f"{generation = }")
+                # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
+            survivors = generate_new_population(survivors)
+            for survivor in survivors:
+                mutate(survivor)
+    except KeyboardInterrupt:
+        print("Genetic algorithm interrupted.")
     return best_survivor
 
 
