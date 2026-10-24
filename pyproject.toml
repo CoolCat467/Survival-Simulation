@@ -41,8 +41,8 @@ dependencies = [
 version = {attr = "survival_sim.__version__"}
 
 [project.urls]
-#"Source" = ""
-#"Bug Tracker" = ""
+"Source" = "https://github.com/CoolCat467/Survival-Simulation"
+"Bug Tracker" = "https://github.com/CoolCat467/Survival-Simulation/issues"
 
 [project.gui-scripts]
 survival_sim_run = "survival_sim:cli_run"
