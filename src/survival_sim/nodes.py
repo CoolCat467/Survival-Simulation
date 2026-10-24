@@ -28,7 +28,7 @@ __license__ = "GNU General Public License Version 3"
 import math
 import sys
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Generic, TypeVar, cast
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -36,28 +36,25 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
 
-Number = TypeVar("Number", int, float)
-
-
 if sys.version_info < (3, 12):
     import operator
 
-    def sumprod(p: Iterable[Number], q: Iterable[Number]) -> Number:
+    def sumprod(p: Iterable[float], q: Iterable[float]) -> float:
         """Return the sum of products of values from two iterables p and q."""
-        return sum(map(operator.mul, p, q, strict=True))
+        return float(sum(map(operator.mul, p, q, strict=True)))
 else:
     sumprod = math.sumprod
 
 
 @dataclass(slots=True, frozen=True)
-class Node(Generic[Number]):
+class Node:
     """Node class with partial value calculation from inputs."""
 
-    weights: list[Number]
+    weights: list[float]
 
-    def get_value(self, inputs: Iterable[Number]) -> Number:
+    def get_value(self, inputs: Iterable[float]) -> float:
         """Return value of the sum of input * weight for each pair."""
-        return cast("Number", sumprod(inputs, self.weights))  # type: ignore[redundant-cast]
+        return sumprod(inputs, self.weights)
 
     def copy(self) -> Self:
         """Return a deep copy of this node."""
@@ -69,14 +66,14 @@ class SharedNode:
     """Shared node class."""
 
     name: str
-    value: int = 0
-    weights: list[int] = field(default_factory=list)
+    value: float = 0.0
+    weights: list[float] = field(default_factory=list)
 
-    def set_value(self, v: int) -> None:
+    def set_value(self, v: float) -> None:
         """Set value."""
         self.value = v
 
-    def get_value(self) -> int:
+    def get_value(self) -> float:
         """Return value."""
         return self.value
 

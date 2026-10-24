@@ -26,9 +26,9 @@ __license__ = "GNU General Public License Version 3"
 
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, cast
+from typing import TYPE_CHECKING
 
-from survival_sim.nodes import InputNode, Node, Number, OutputNode
+from survival_sim.nodes import InputNode, Node, OutputNode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -75,12 +75,12 @@ class OldNetwork:
 
     def assign_inputs(
         self,
-        thirst: int = 0,
-        hunger: int = 0,
-        energy: int = 0,
-        shelter: int = 0,
-        food: int = 0,
-        water: int = 0,
+        thirst: float = 0.0,
+        hunger: float = 0.0,
+        energy: float = 0.0,
+        shelter: float = 0.0,
+        food: float = 0.0,
+        water: float = 0.0,
     ) -> None:
         """Assign input values to nodes."""
         self.input_nodes[0].value = thirst
@@ -104,7 +104,7 @@ class OldNetwork:
     def propagate(self) -> None:
         """Propagate inputs through the network."""
         for node in self.output_nodes:
-            node.value = 0
+            node.value = 0.0
             for index in range(len(node.inputs)):
                 node.value += (
                     node.inputs[index].get_value() * node.weights[index]
@@ -168,12 +168,12 @@ def test_old() -> None:
 
 
 @dataclass(frozen=True, slots=True)
-class Network(Generic[Number]):
+class Network:
     """Base network with feed forward and mutations."""
 
-    layers: list[list[Node[Number]]]
+    layers: list[list[Node]]
 
-    def feed_forward(self, inputs: list[Number]) -> list[Number]:
+    def feed_forward(self, inputs: list[float]) -> list[float]:
         """Return the output layer after feeding inputs through the network."""
         input_ = inputs
         for layer in self.layers:
@@ -208,7 +208,7 @@ class Network(Generic[Number]):
         for layer_index, node_index, weight_index, delta in mutations:
             self.layers[layer_index][node_index].weights[weight_index] += delta
 
-    def layers_copy(self) -> list[list[Node[Number]]]:
+    def layers_copy(self) -> list[list[Node]]:
         """Return a deep copy of this network's layers."""
         return [[node.copy() for node in layer] for layer in self.layers]
 
@@ -230,7 +230,7 @@ class Network(Generic[Number]):
 
 
 @dataclass(frozen=True, slots=True, repr=True)
-class ActionNetwork(Network[Number], Generic[Number]):
+class ActionNetwork(Network):
     """Network with named inputs and named action outputs."""
 
     input_names: tuple[str, ...]
@@ -240,14 +240,14 @@ class ActionNetwork(Network[Number], Generic[Number]):
     def setup_layers(
         input_names: Sequence[str],
         action_names: Sequence[str],
-    ) -> list[list[Node[int]]]:
+    ) -> list[list[Node]]:
         """Return a new random simple network layers using action and input names."""
         layers = []
         output_layer = []
         for _action_name in action_names:
             weights = []
             for _input_name in input_names:
-                weights.append(random.randint(-100, 100))  # noqa: S311
+                weights.append(float(random.randint(-100, 100)))  # noqa: S311
             node = Node(weights)
             output_layer.append(node)
         layers.append(output_layer)
@@ -258,10 +258,9 @@ class ActionNetwork(Network[Number], Generic[Number]):
         cls,
         input_names: Sequence[str],
         action_names: Sequence[str],
-    ) -> ActionNetwork[int]:
+    ) -> ActionNetwork:
         """Initialize action network."""
-        class_init = cast("type[ActionNetwork[int]]", cls)  # type: ignore[redundant-cast]
-        return class_init(
+        return cls(
             cls.setup_layers(input_names, action_names),
             tuple(input_names),
             tuple(action_names),
@@ -269,14 +268,14 @@ class ActionNetwork(Network[Number], Generic[Number]):
 
     def get_action_values(
         self,
-        input_values: dict[str, Number],
-    ) -> dict[str, Number]:
+        input_values: dict[str, float],
+    ) -> dict[str, float]:
         """Return a dictionary of action names to values given a dict of input names to values."""
         inputs = [input_values[key] for key in self.input_names]
         output = self.feed_forward(inputs)
         return dict(zip(self.action_names, output, strict=True))
 
-    def get_action(self, input_values: dict[str, Number]) -> str:
+    def get_action(self, input_values: dict[str, float]) -> str:
         """Return the action to perform given a dict of input names to values."""
         action_results = self.get_action_values(input_values)
         action = max(
@@ -317,7 +316,7 @@ def test() -> None:
     network = ActionNetwork.new_network(input_fields, actions)
     print(f"{network = }")
     input_values = {
-        field_name: random.randint(0, 100)  # noqa: S311
+        field_name: float(random.randint(0, 100))  # noqa: S311
         for field_name in input_fields
     }
     print(f"{input_values = }")

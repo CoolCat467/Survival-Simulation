@@ -27,17 +27,14 @@ __license__ = "GNU General Public License Version 3"
 import random
 from dataclasses import dataclass, field
 
-from survival_sim.nodes import sumprod
+from survival_sim.nodes import SharedNode, sumprod
 
 
 @dataclass(slots=True)
-class Node:
+class Node(SharedNode):
     """Node class."""
 
-    id_: str
-    value: float = 0.0
     neighbors: list[Node] = field(default_factory=list)
-    weights: list[float] = field(default_factory=list)
 
     def add_neighbor(self, node: Node, weight: float) -> None:
         """Add neighbor node."""
@@ -47,11 +44,15 @@ class Node:
     def update_value(self) -> None:
         """Update value."""
         if len(self.neighbors) == len(self.weights):
-            self.value = sumprod(
-                (neighbor.value for neighbor in self.neighbors),
-                self.weights,
+            self.set_value(
+                sumprod(
+                    (neighbor.value for neighbor in self.neighbors),
+                    self.weights,
+                ),
             )
-        self.value = max(-1, min(1, self.value))
+
+    def set_value(self, value: float) -> None:  # noqa: D102
+        super().set_value(max(-1, min(1, value)))
 
 
 @dataclass(slots=True)
@@ -78,10 +79,10 @@ class HopfieldNetwork:
     def print_information(self) -> None:
         """Print information about nodes."""
         for n in self.nodes:
-            print(f"Node {n.id_}-current value: {n.value}, connected to...")
+            print(f"Node {n.name}-current value: {n.value}, connected to...")
             for index in range(len(n.weights)):
                 print(
-                    f"Neighbor: {n.neighbors[index].id_} - Weight: {n.weights[index]}",
+                    f"Neighbor: {n.neighbors[index].name} - Weight: {n.weights[index]}",
                 )
 
 
@@ -110,7 +111,7 @@ def main() -> None:
         print(f"\n\n*******\nIteration {i}\n*******")
         x = random.randint(0, 2)  # noqa: S311
         node = hopfield.nodes[x]
-        print(f"UPDATING NODE {node.id_}")
+        print(f"UPDATING NODE {node.name}")
 
         node.update_value()
         hopfield.print_information()
