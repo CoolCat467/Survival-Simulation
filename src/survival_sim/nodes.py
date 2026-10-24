@@ -25,26 +25,75 @@ __author__ = "Nathan Roth & CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
 
-class inputNode:
-    def __init__(self, n):
-        self.outputs = []  # list of nodes
-        self.weights = []  # list of weights
+import math
+import sys
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Generic, TypeVar, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from typing_extensions import Self
+
+
+Number = TypeVar("Number", int, float)
+
+
+if sys.version_info < (3, 12):
+    import operator
+
+    def sumprod(p: Iterable[Number], q: Iterable[Number]) -> Number:
+        """Return the sum of products of values from two iterables p and q."""
+        return sum(map(operator.mul, p, q, strict=True))
+else:
+    sumprod = math.sumprod
+
+
+@dataclass(slots=True, frozen=True)
+class Node(Generic[Number]):
+    weights: list[Number]
+
+    def get_value(self, inputs: Iterable[Number]) -> Number:
+        """Return value of the sum of input * weight for each pair."""
+        return cast("Number", sumprod(inputs, self.weights))  # type: ignore[redundant-cast]
+
+    def copy(self) -> Self:
+        """Return a deep copy of this node."""
+        return self.__class__(list(self.weights))
+
+
+class InputNode:
+    def __init__(self, n: str) -> None:
+        # list of nodes
+        self.outputs: list[OutputNode] = []
+        # list of weights
+        self.weights: list[int] = []
         self.value = 0
         self.name = n
 
-    def setValue(self, v):
+    def setValue(self, v: int) -> None:
         self.value = v
 
-    def getValue(self):
+    def getValue(self) -> int:
         return self.value
 
 
-class outputNode:
-    def __init__(self, n):
-        self.inputs = []
-        self.weights = []
+class OutputNode:
+    def __init__(self, n: str) -> None:
+        self.inputs: list[InputNode] = []
+        self.weights: list[int] = []
         self.value = 0
         self.name = n
 
-    def getValue(self):
+    def getValue(self) -> int:
         return self.value
+
+
+def test() -> None:
+    node = Node(weights=[0.25, 0.5])
+    print(f"{node = }")
+    print(f"{node.get_value((2.0, 4.0)) = }")
+
+
+if __name__ == "__main__":
+    test()
