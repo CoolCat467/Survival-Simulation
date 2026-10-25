@@ -96,7 +96,7 @@ def yield_json_files(folder: Path) -> Generator[Path, None, None]:
         yield file
 
 
-def load_population(
+def load_all_survivors(
     saved_survivors_folder: Path,
 ) -> list[Survivor]:
     """Load all survivors from folder."""
@@ -183,7 +183,7 @@ def main() -> None:
         )
 
     if load_survivors:
-        survivors = load_population(saved_survivors_folder)
+        survivors = load_all_survivors(saved_survivors_folder)
         print(f"Loaded {len(survivors)} survivors from files.")
 
         # Pad missing with new random survivors
@@ -213,13 +213,12 @@ def main() -> None:
     if input("Would you like to save this survivor? (Y/n): ").lower() != "n":
         save_survivor(saved_survivors_folder, best_survivor)
 
-    # for _t in range(200):
-    while survivor.alive:
-        if survivor.alive:
-            survivor.advance_time(True)
-            survivor.print_information()
-            # survivor.advanceTime()
-            # survivor.print_information()
+    if input("Would you like to view this survivor? (Y/n): ").lower() != "n":
+        # for _t in range(max_simulation_iterations):
+        while survivor.alive:
+            if survivor.alive:
+                survivor.advance_time(True)
+                survivor.print_information()
 
 
 def cli_run() -> None:

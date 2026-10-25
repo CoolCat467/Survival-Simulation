@@ -26,6 +26,7 @@ __license__ = "GNU General Public License Version 3"
 
 
 import statistics
+import sys
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -164,41 +165,82 @@ def genetic_algorithm(
     # perform mutation on new population
     # calculate fitness on new population
 
+    output_is_terminal = sys.stdout.isatty()
+    print_every = 8
+
+    last_print_generation = 0
+    last_print_was_high = False
+    time_deltas = []
+
     survivors = initial_population
     high_score = 0
-    last_print_generation = 0
-    time_deltas = []
+
+    start = perf_counter()
     try:
         for generation in range(generations):
             # print(f"**********\nGENERATION {generation}\n**********\n")
-            start = perf_counter()
             simulate_survival_trial(survivors, max_simulation_iterations)
-            time_deltas.append(perf_counter() - start)
+
+            end = perf_counter()
+            time_deltas.append(end - start)
+            start = end
+
             # print_population_results(survivors)
             # print_top_best(survivors, 3)
+
             best_fitness, survivor = get_best_fitness(survivors)
 
             if best_fitness > high_score:
-                print(
-                    f"New high value of {best_fitness} in generation {generation}",
-                )
                 high_score = best_fitness
-                ##                print()
-                ##                print(f"{survivor.network = }")
-                ##                print()
+
+                if output_is_terminal:
+                    print(
+                        "\r" if last_print_was_high else "\n",
+                        end="",
+                        flush=True,
+                    )
+                print(
+                    f"{generation = }   New high value of {best_fitness}",
+                    end=" " if output_is_terminal else "\n",
+                    flush=output_is_terminal,
+                )
+
+                ##print()
+                ##print(f"{survivor.network = }")
+                ##print()
+
                 last_print_generation = generation
-            elif generation - last_print_generation >= 6:
-                last_print_generation = generation
+                last_print_was_high = True
+            elif generation - last_print_generation >= print_every:
                 remaining = generations - generation
                 estimated_wait = estimate_completion(time_deltas, remaining)
                 estimated_completion = elapsed.get_elapsed(estimated_wait)
+
+                if output_is_terminal:
+                    print(
+                        "\n" if last_print_was_high else "\r",
+                        end="",
+                        flush=True,
+                    )
                 print(
-                    f"{generation = } Estimated remaining time {estimated_completion}",
+                    f"{generation = }   Estimated remaining time {estimated_completion}",
+                    end=" " if output_is_terminal else "\n",
+                    flush=output_is_terminal,
                 )
                 # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
+
+                last_print_generation = generation
+                last_print_was_high = False
+
             survivors = generate_new_population(survivors, cull_fraction)
             for survivor in survivors:
                 mutate(survivor)
+
     except KeyboardInterrupt:
+        if output_is_terminal:
+            print(flush=True)
         print("Genetic algorithm interrupted.")
+    else:
+        if output_is_terminal:
+            print(flush=True)
     return survivor
