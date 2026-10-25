@@ -171,8 +171,9 @@ def genetic_algorithm(
     try:
         for generation in range(generations):
             # print(f"**********\nGENERATION {generation}\n**********\n")
+            start = perf_counter()
             simulate_survival_trial(survivors, max_simulation_iterations)
-            time_deltas.append(perf_counter())
+            time_deltas.append(perf_counter() - start)
             # print_population_results(survivors)
             # print_top_best(survivors, 3)
             best_fitness, survivor = get_best_fitness(survivors)
@@ -186,7 +187,7 @@ def genetic_algorithm(
                 ##                print(f"{survivor.network = }")
                 ##                print()
                 last_print_generation = generation
-            elif generation - last_print_generation >= 10:
+            elif generation - last_print_generation >= 6:
                 last_print_generation = generation
                 remaining = generations - generation
                 estimated_wait = estimate_completion(time_deltas, remaining)
