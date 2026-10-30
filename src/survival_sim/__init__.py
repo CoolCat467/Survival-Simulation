@@ -81,7 +81,11 @@ def load_network(network_filepath: Path) -> ActionNetwork[int]:
 
 def load_survivor(survivor_filepath: Path) -> Survivor:
     """Return network loaded from given filepath."""
-    return Survivor.from_bytes(survivor_filepath.read_bytes())
+    try:
+        return Survivor.from_bytes(survivor_filepath.read_bytes())
+    except TypeError as exc:
+        exc.add_note(f"{survivor_filepath = }")
+        raise
 
 
 def yield_json_files(folder: Path) -> Generator[Path, None, None]:
