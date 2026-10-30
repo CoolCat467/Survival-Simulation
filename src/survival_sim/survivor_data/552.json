@@ -3,7 +3,7 @@
   "energy": 0,
   "food_stash": 0,
   "health": 0,
-  "hunger": 0,
+  "food": 0,
   "name": "loaded survivor 0",
   "network": {
     "action_names": [
@@ -21,9 +21,9 @@
       "energy",
       "food_stash",
       "health",
-      "hunger",
+      "food",
       "shelter",
-      "thirst",
+      "water",
       "water_stash"
     ],
     "layers": [
@@ -226,6 +226,6 @@
     ]
   },
   "shelter": 85,
-  "thirst": 75,
+  "water": 75,
   "water_stash": 67
 }

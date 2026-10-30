@@ -94,14 +94,14 @@ class BaseSurvivor:
     """Base survivor class without a brain."""
 
     MAX_HEALTH: ClassVar = 100
-    MAX_HUNGER: ClassVar = 100
-    MAX_THIRST: ClassVar = 100
+    MAX_FOOD: ClassVar = 100
+    MAX_WATER: ClassVar = 100
     MAX_ENERGY: ClassVar = 100
 
     name: str
 
-    thirst: int = MAX_THIRST
-    hunger: int = MAX_HUNGER
+    water: int = MAX_WATER
+    food: int = MAX_FOOD
     energy: int = MAX_ENERGY
     health: int = MAX_HEALTH
     food_stash: int = 0
@@ -113,6 +113,15 @@ class BaseSurvivor:
     def alive(self) -> bool:
         """Return if health is greater than zero."""
         return self.health > 0
+
+    def calculate_fitness(self) -> int:
+        """Return fitness."""
+        return (
+            self.age + self.health
+            # + min(self.MAX_WATER, self.water)
+            # + min(self.MAX_FOOD, self.food)
+            # + min(self.MAX_ENERGY, self.energy)
+        )
 
     def can_perform_action(self, costs: dict[str, int]) -> bool:
         """Return if able to perform an action that costs a given amount of an attribute."""
@@ -129,21 +138,24 @@ class BaseSurvivor:
             new_value = getattr(self, attribute) - cost
             setattr(self, attribute, new_value)
 
+    def regain_health_good_conditions(self) -> None:
+        """Regain health if in good condition."""
+        if self.food > 80 and self.water > 80 and self.health < 95:
+            self.health += 2
+
     @costs(food_stash=1)
     def action_eat(self) -> None:
         """Perform eat action."""
-        if self.hunger < 90:
-            self.hunger += 10
-        if self.hunger > 80 and self.health < 95:
-            self.health += 2
+        if self.food < 90:
+            self.food += 10
+        self.regain_health_good_conditions()
 
     @costs(water_stash=1)
     def action_drink(self) -> None:
         """Perform drink action."""
-        if self.thirst < 92:
-            self.thirst += 8
-        if self.thirst > 80 and self.health < 95:
-            self.health += 2
+        if self.water < 92:
+            self.water += 8
+        self.regain_health_good_conditions()
 
     def action_sleep(self) -> None:
         """Perform sleep action."""
@@ -190,9 +202,9 @@ class BaseSurvivor:
 
     def advance_time(self, printing: bool = False) -> None:
         """Advance time and perform an action."""
-        # get hungrier, get thirstier, lose energy
-        self.hunger = max(self.hunger - 3, 0)
-        self.thirst = max(self.thirst - 3, 0)
+        # get hungrier, get waterier, lose energy
+        self.food = max(self.food - 3, 0)
+        self.water = max(self.water - 3, 0)
         self.age += 1
 
         if self.shelter < 20:
@@ -205,7 +217,7 @@ class BaseSurvivor:
         self.energy = max(0, self.energy - 2)
 
         # take damage from poor conditions
-        if self.thirst < 20 or self.hunger < 20 or self.energy < 20:
+        if self.water < 20 or self.food < 20 or self.energy < 20:
             self.health -= 1
 
         if not self.alive:
@@ -215,49 +227,49 @@ class BaseSurvivor:
 
         action = self.decide_action()
         success, cost_attr_info = self.perform_action(action)
-        if printing:
-            if success:
-                print(f"{self.name} just did the {action} action")
-            else:
-                if cost_attr_info is None:
-                    cost_attr_info = "of an unknown attribute"
-                print(
-                    f"{self.name} wanted to do the {action} action but didn't have enough {cost_attr_info}",
-                )
+
+        if not printing:
+            return
+
+        if success:
+            print(f"{self.name} just did the {action} action")
+        else:
+            if cost_attr_info is None:
+                cost_attr_info = "of an unknown attribute"
+            print(
+                f"{self.name} wanted to do the {action} action but didn't have enough {cost_attr_info}",
+            )
 
     def perform_action(self, action: str) -> tuple[bool, str | None]:
-        """Perform the given action. Return if successful.
+        """Return if performing given action was successful and optional missing attributes.
 
         Not successful if energy was too low.
         """
         action_title = action.replace(" ", "_")
         perform_action_function = getattr(self, f"action_{action_title}", None)
-        if perform_action_function is not None:
-            assert callable(perform_action_function)
-            result = perform_action_function()
-            if result is not None:
-                cost_attrs_info = getattr(
-                    perform_action_function,
-                    "cost_attrs_info",
-                    None,
-                )
-                return bool(result), cost_attrs_info
-        return True, None
 
-    def calculate_fitness(self) -> int:
-        """Return fitness."""
-        return (
-            self.age
-            + self.health
-            + min(self.MAX_THIRST, self.thirst)
-            + min(self.MAX_HUNGER, self.hunger)
-            + min(self.MAX_ENERGY, self.energy)
+        if perform_action_function is None:
+            # Action that does not exist is something like "rest"
+            return True, None
+
+        assert callable(perform_action_function)
+        result = perform_action_function()
+
+        if result is None:
+            # non-wrapped actions are always successful
+            return True, None
+
+        cost_attrs_info = getattr(
+            perform_action_function,
+            "cost_attrs_info",
+            None,
         )
+        return bool(result), cost_attrs_info
 
     def print_information(self) -> None:
         """Print general status information."""
         print(
-            f"{self.name} Hour {self.age}:\tHealth: {self.health}, Hunger: {self.hunger}, Thirst: {self.thirst}, Energy: {self.energy}, Shelter: {self.shelter}\n",
+            f"{self.name} Hour {self.age}:\tHealth: {self.health}, Food: {self.food}, Water: {self.water}, Energy: {self.energy}, Shelter: {self.shelter}\n",
         )
 
     @classmethod
@@ -305,7 +317,7 @@ class BaseSurvivor:
 
 
 # Would have loved to do this all in one class, but not possible to
-# define a field with a factory default that uses a class method as it's
+# define a field with a factory default that uses a class method as its
 # build function.
 
 

@@ -3,7 +3,7 @@
   "energy": 2,
   "food_stash": 0,
   "health": 20,
-  "hunger": 0,
+  "food": 0,
   "name": "survivor 20",
   "network": {
     "action_names": [
@@ -21,9 +21,9 @@
       "energy",
       "food_stash",
       "health",
-      "hunger",
+      "food",
       "shelter",
-      "thirst",
+      "water",
       "water_stash"
     ],
     "layers": [
@@ -226,6 +226,6 @@
     ]
   },
   "shelter": 90,
-  "thirst": 95,
+  "water": 95,
   "water_stash": 18
 }
