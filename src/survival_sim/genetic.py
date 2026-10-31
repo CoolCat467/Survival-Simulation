@@ -27,6 +27,7 @@ __license__ = "GNU General Public License Version 3"
 
 import statistics
 import sys
+from dataclasses import dataclass
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -35,6 +36,9 @@ from survival_sim.survivor import Survivor
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
+    from types import TracebackType
+
+    from typing_extensions import Self
 
 
 def clone_best(survivors: list[Survivor], fraction: int) -> list[Survivor]:
@@ -151,6 +155,57 @@ def estimate_completion(time_deltas: list[float], remaining: int) -> float:
     return average_wait * remaining
 
 
+@dataclass
+class IOWriter:
+    """Line overwrite writer."""
+
+    max_line_col: int = 0
+    last_message_type: int = 0
+
+    @property
+    def is_tty(self) -> bool:
+        """Return if stdout is a tty."""
+        return sys.stdout.isatty()
+
+    def _newline(self, value: str) -> None:
+        """Write a new line."""
+        print(f"\n{value}", end="", flush=True)
+        self.max_line_col = len(value)
+
+    def write_line(self, value: str, message_type: int | None = None) -> None:
+        """Write a line to output.
+
+        If message type is not given or is not the same as last message type,
+        starts a new line instead of overwriting the old one.
+        """
+        if not self.is_tty:
+            print(value)
+            return
+        if message_type is None or self.last_message_type != message_type:
+            self._newline(value)
+            self.last_message_type = message_type or 0
+            return
+        length = len(value)
+        missing = max(0, self.max_line_col - length)
+        print(f"\r{value}{' ' * missing}", end="", flush=True)
+        self.max_line_col = max(self.max_line_col, length)
+        self.last_message_type = message_type
+
+    def __enter__(self) -> Self:
+        """Context manager open."""
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        """Context manager close."""
+        if self.is_tty:
+            print(flush=True)
+
+
 def genetic_algorithm(
     initial_population: list[Survivor],
     generations: int,
@@ -165,11 +220,9 @@ def genetic_algorithm(
     # perform mutation on new population
     # calculate fitness on new population
 
-    output_is_terminal = sys.stdout.isatty()
     print_every = 8
 
     last_print_generation = 0
-    last_print_was_high = False
     time_deltas = []
 
     survivors = initial_population
@@ -177,70 +230,54 @@ def genetic_algorithm(
 
     start = perf_counter()
     try:
-        for generation in range(generations):
-            # print(f"**********\nGENERATION {generation}\n**********\n")
-            simulate_survival_trial(survivors, max_simulation_iterations)
+        with IOWriter() as output:
+            for generation in range(generations):
+                # print(f"**********\nGENERATION {generation}\n**********\n")
+                simulate_survival_trial(survivors, max_simulation_iterations)
 
-            end = perf_counter()
-            time_deltas.append(end - start)
-            start = end
+                end = perf_counter()
+                time_deltas.append(end - start)
+                start = end
 
-            # print_population_results(survivors)
-            # print_top_best(survivors, 3)
+                # print_population_results(survivors)
+                # print_top_best(survivors, 3)
 
-            best_fitness, survivor = get_best_fitness(survivors)
+                best_fitness, survivor = get_best_fitness(survivors)
 
-            if best_fitness > high_score:
-                high_score = best_fitness
+                if best_fitness > high_score:
+                    high_score = best_fitness
 
-                if output_is_terminal:
-                    print(
-                        "\r" if last_print_was_high else "\n",
-                        end="",
-                        flush=True,
+                    output.write_line(
+                        f"{generation = }   New high value of {best_fitness}",
+                        0,
                     )
-                print(
-                    f"{generation = }   New high value of {best_fitness}",
-                    end=" " if output_is_terminal else "\n",
-                    flush=output_is_terminal,
-                )
 
-                ##print()
-                ##print(f"{survivor.network = }")
-                ##print()
+                    ##print()
+                    ##print(f"{survivor.network = }")
+                    ##print()
 
-                last_print_generation = generation
-                last_print_was_high = True
-            elif generation - last_print_generation >= print_every:
-                remaining = generations - generation
-                estimated_wait = estimate_completion(time_deltas, remaining)
-                estimated_completion = elapsed.get_elapsed(estimated_wait)
-
-                if output_is_terminal:
-                    print(
-                        "\n" if last_print_was_high else "\r",
-                        end="",
-                        flush=True,
+                    last_print_generation = generation
+                elif generation - last_print_generation >= print_every:
+                    remaining = generations - generation
+                    estimated_wait = estimate_completion(
+                        time_deltas,
+                        remaining,
                     )
-                print(
-                    f"{generation = }   Estimated remaining time {estimated_completion}",
-                    end=" " if output_is_terminal else "\n",
-                    flush=output_is_terminal,
-                )
-                # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
+                    estimated_completion = elapsed.get_elapsed(estimated_wait)
 
-                last_print_generation = generation
-                last_print_was_high = False
+                    output.write_line(
+                        f"{generation = }   Estimated remaining time {estimated_completion}",
+                        1,
+                    )
+                    # print(f"Current high: {get_best_fitness(survivors)[0]}, generation: {generation}")
 
-            survivors = generate_new_population(survivors, cull_fraction)
-            for survivor in survivors:
-                mutate(survivor)
+                    # continuously update if output is a tty
+                    if not output.is_tty:
+                        last_print_generation = generation
 
+                survivors = generate_new_population(survivors, cull_fraction)
+                for survivor in survivors:
+                    mutate(survivor)
     except KeyboardInterrupt:
-        if output_is_terminal:
-            print(flush=True)
         print("Genetic algorithm interrupted.")
-    else:
-        if output_is_terminal:
-            print(flush=True)
     return survivor

@@ -117,10 +117,11 @@ class BaseSurvivor:
     def calculate_fitness(self) -> int:
         """Return fitness."""
         return (
-            self.age + self.health
-            # + min(self.MAX_WATER, self.water)
-            # + min(self.MAX_FOOD, self.food)
-            # + min(self.MAX_ENERGY, self.energy)
+            self.age
+            + self.health
+            + min(self.MAX_WATER, self.water)
+            + min(self.MAX_FOOD, self.food)
+            + min(self.MAX_ENERGY, self.energy)
         )
 
     def can_perform_action(self, costs: dict[str, int]) -> bool:
