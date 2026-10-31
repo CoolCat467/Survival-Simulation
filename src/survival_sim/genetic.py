@@ -263,7 +263,9 @@ def genetic_algorithm(
                         time_deltas,
                         remaining,
                     )
-                    estimated_completion = elapsed.get_elapsed(estimated_wait)
+                    estimated_completion = elapsed.get_elapsed(
+                        int(estimated_wait),
+                    )
 
                     output.write_line(
                         f"{generation = }   Estimated remaining time {estimated_completion}",
