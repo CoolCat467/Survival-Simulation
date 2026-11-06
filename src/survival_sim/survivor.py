@@ -141,20 +141,20 @@ class BaseSurvivor:
 
     def regain_health_good_conditions(self) -> None:
         """Regain health if in good condition."""
-        if self.food > 80 and self.water > 80 and self.health < 95:
+        if (self.food > 80 or self.water > 80) and self.health <= 98:
             self.health += 2
 
     @costs(food_stash=1)
     def action_eat(self) -> None:
         """Perform eat action."""
-        if self.food < 90:
+        if self.food <= 90:
             self.food += 10
         self.regain_health_good_conditions()
 
     @costs(water_stash=1)
     def action_drink(self) -> None:
         """Perform drink action."""
-        if self.water < 92:
+        if self.water <= 92:
             self.water += 8
         self.regain_health_good_conditions()
 
@@ -169,7 +169,7 @@ class BaseSurvivor:
             self.shelter += 15
         elif self.shelter < 80:
             self.shelter += 10
-        elif self.shelter < 95:
+        elif self.shelter <= 95:
             # Old said -= 5 here, I think that's a typo?
             # self.shelter -= 5
             self.shelter += 5

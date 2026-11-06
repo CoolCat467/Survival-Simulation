@@ -145,13 +145,13 @@ def main() -> None:
         help="Population batch size per generation. Defaults to 100",
     )
     parser.add_argument(
-        "--max-simulation-iterations",
+        "--iterations",
         type=str,
         default="200",
         help="Maximum number of simulation iterations per batch. Defaults to 200. If `None`, runs until all survivors have died.",
     )
     parser.add_argument(
-        "--new-network-hidden-layer-count",
+        "--hidden-layers",
         type=int,
         default="0",
         help="Number of hidden layers for new networks. Defaults to 0",
@@ -166,11 +166,11 @@ def main() -> None:
     args = parser.parse_args()
 
     population_size = int(args.population_size)
-    hidden_layers = max(0, int(args.new_network_hidden_layer_count))
+    hidden_layers = max(0, int(args.hidden_layers))
     generations = int(args.generations)
-    max_simulation_iterations: int | None = None
-    if args.max_simulation_iterations.lower() != "none":
-        max_simulation_iterations = int(args.max_simulation_iterations)
+    iterations: int | None = None
+    if args.iterations.lower() != "none":
+        iterations = int(args.iterations)
     cull_fraction = max(1, int(args.cull_fraction))
 
     this_file = Path(__file__).absolute()
@@ -203,7 +203,7 @@ def main() -> None:
     best_survivor = genetic_algorithm(
         survivors,
         generations,
-        max_simulation_iterations,
+        iterations,
         cull_fraction,
     )
     # print(f"{best_survivor = }")
@@ -218,7 +218,7 @@ def main() -> None:
         save_survivor(saved_survivors_folder, best_survivor)
 
     if input("Would you like to view this survivor? (Y/n): ").lower() != "n":
-        # for _t in range(max_simulation_iterations):
+        # for _t in range(iterations):
         while survivor.alive:
             if survivor.alive:
                 survivor.advance_time(True)
