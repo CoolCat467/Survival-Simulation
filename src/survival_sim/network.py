@@ -246,22 +246,13 @@ class Network(Generic[Number]):
         return copy
 
     @staticmethod
-    def setup_layers(
-        input_count: int,
-        output_count: int,
-        hidden_layers: int,
+    def generate_layers(
+        input_node_count: int,
+        node_counts: Iterable[int],
     ) -> list[list[Node[int]]]:
-        """Return a new random simple network layers using action and input names."""
-        layer_count = hidden_layers + 1
-        difference = input_count - output_count
-
-        node_counts = [
-            input_count - (difference * (i + 1) + hidden_layers) // layer_count
-            for i in range(layer_count)
-        ]
-
+        """Return new random network layers given an iterable of node counts per layer."""
         layers = []
-        layer_input_count = input_count
+        layer_input_count = input_node_count
 
         for current_layer_node_count in node_counts:
             layer = []
@@ -277,6 +268,26 @@ class Network(Generic[Number]):
 
             layer_input_count = current_layer_node_count
         return layers
+
+    @classmethod
+    def setup_layers(
+        cls,
+        input_node_count: int,
+        output_node_count: int,
+        hidden_layers: int,
+    ) -> list[list[Node[int]]]:
+        """Return new random simple network layers given input/output node count and number of hidden layers."""
+        layer_count = hidden_layers + 1
+        difference = input_node_count - output_node_count
+
+        return cls.generate_layers(
+            input_node_count,
+            (
+                input_node_count
+                - (difference * (i + 1) + hidden_layers) // layer_count
+                for i in range(layer_count)
+            ),
+        )
 
     def serialize(self) -> bytes:
         """Return json payload from instance."""
@@ -352,9 +363,15 @@ class ActionNetwork(Network[Number], Generic[Number]):
         output = self.feed_forward(inputs)
         return dict(zip(self.action_names, output, strict=True))
 
-    def get_action(self, input_values: dict[str, Number]) -> str:
+    def get_action(
+        self,
+        input_values: dict[str, Number],
+        skip_actions: Iterable[str] | None = None,
+    ) -> str:
         """Return the action to perform given a dict of input names to values."""
         action_results = self.get_action_values(input_values)
+        for skip_action in skip_actions or ():
+            del action_results[skip_action]
         action = max(
             action_results.items(),
             key=lambda action_result: action_result[1],

@@ -82,7 +82,7 @@ Returns False if could not perform action because of not enough {cost_attrs_info
 Return True if successful."""
 
         # Remember which attributes are required for printing later
-        wrapper.cost_attrs_info = cost_attrs_info  # type: ignore[attr-defined]
+        wrapper.costs = kwargs  # type: ignore[attr-defined]
 
         return wrapper
 
@@ -228,7 +228,7 @@ class BaseSurvivor:
             return
 
         action = self.decide_action()
-        success, cost_attr_info = self.perform_action(action)
+        success, costs = self.perform_action(action)
 
         if not printing:
             return
@@ -236,13 +236,17 @@ class BaseSurvivor:
         if success:
             print(f"{self.name} just did the {action} action")
         else:
-            if cost_attr_info is None:
-                cost_attr_info = "of an unknown attribute"
+            cost_attr_info = "of an unknown attribute"
+            if costs is not None:
+                cost_attr_info = combine_end(costs, "or")
             print(
                 f"{self.name} wanted to do the {action} action but didn't have enough {cost_attr_info}",
             )
 
-    def perform_action(self, action: str) -> tuple[bool, str | None]:
+    def perform_action(
+        self,
+        action: str,
+    ) -> tuple[bool, dict[str, int] | None]:
         """Return if performing given action was successful and optional missing attributes.
 
         Not successful if energy was too low.
@@ -261,12 +265,12 @@ class BaseSurvivor:
             # non-wrapped actions are always successful
             return True, None
 
-        cost_attrs_info = getattr(
+        costs: dict[str, int] | None = getattr(
             perform_action_function,
-            "cost_attrs_info",
+            "costs",
             None,
         )
-        return bool(result), cost_attrs_info
+        return bool(result), costs
 
     def print_information(self) -> None:
         """Print general status information."""
@@ -275,9 +279,35 @@ class BaseSurvivor:
         )
 
     @classmethod
-    def get_action_functions(cls) -> list[str]:
-        """Return a list of all action functions."""
-        return [attr[7:] for attr in dir(cls) if attr.startswith("action_")]
+    def yield_action_function_names(cls) -> Generator[str, None, None]:
+        """Yield all action function names."""
+        return (attr[7:] for attr in dir(cls) if attr.startswith("action_"))
+
+    @classmethod
+    def yield_action_functions(
+        cls,
+    ) -> Generator[Callable[[], bool | None], None, None]:
+        """Yield all action functions."""
+        for attr in dir(cls):
+            if not attr.startswith("action_"):
+                continue
+            function = getattr(cls, attr)
+            assert callable(function)
+            yield function
+
+    @classmethod
+    def yield_action_costs(
+        cls,
+    ) -> Generator[tuple[str, dict[str, int]], None, None]:
+        """Yield tuples of action names and costs."""
+        for function in cls.yield_action_functions():
+            yield function.__name__, getattr(function, "costs", {})
+
+    def yield_unusable_actions(self) -> Generator[str, None, None]:
+        """Yield all unusable actions."""
+        for action_name, costs in self.yield_action_costs():
+            if not self.can_perform_action(costs):
+                yield action_name
 
     @classmethod
     def yield_input_fields(cls) -> Generator[str, None, None]:
@@ -293,7 +323,7 @@ class BaseSurvivor:
     def create_network(cls, hidden_layers: int = 0) -> ActionNetwork[int]:
         """Return a new ActionNetwork with all input fields and actions."""
         input_fields = sorted(cls.yield_input_fields())
-        actions = sorted(["relax", *cls.get_action_functions()])
+        actions = sorted(["relax", *cls.yield_action_function_names()])
         return ActionNetwork.new_network(input_fields, actions, hidden_layers)
 
     def get_inputs(self) -> dict[str, int]:
@@ -332,7 +362,10 @@ class Survivor(BaseSurvivor):
     )
 
     def decide_action(self) -> str:  # noqa: D102
-        return self.network.get_action(self.get_inputs())
+        return self.network.get_action(
+            self.get_inputs(),
+            self.yield_unusable_actions(),
+        )
 
     def clone_network(self) -> ActionNetwork[int]:
         """Return a copy of the network."""
