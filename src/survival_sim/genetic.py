@@ -226,6 +226,7 @@ def genetic_algorithm(
     time_deltas = []
 
     survivors = initial_population
+    survivor = initial_population[0]
     high_score = 0
 
     start = perf_counter()

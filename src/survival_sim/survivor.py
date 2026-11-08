@@ -307,7 +307,7 @@ class BaseSurvivor:
         """Yield all unusable actions."""
         for action_name, costs in self.yield_action_costs():
             if not self.can_perform_action(costs):
-                yield action_name
+                yield action_name.removeprefix("action_")
 
     @classmethod
     def yield_input_fields(cls) -> Generator[str, None, None]:
