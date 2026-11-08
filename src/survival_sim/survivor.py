@@ -119,9 +119,10 @@ class BaseSurvivor:
         return (
             self.age
             + self.health
-            + min(self.MAX_WATER, self.water)
-            + min(self.MAX_FOOD, self.food)
-            + min(self.MAX_ENERGY, self.energy)
+            # + min(self.MAX_WATER, self.water)
+            # + min(self.MAX_FOOD, self.food)
+            # + min(self.MAX_ENERGY, self.energy)
+            + (0 if self.alive else -1000)
         )
 
     def can_perform_action(self, costs: dict[str, int]) -> bool:
